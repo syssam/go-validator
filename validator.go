@@ -256,7 +256,6 @@ func ValidateStruct(s interface{}) (bool, error) {
 		isValid, err := valid(valuefield, &f, val)
 		if err != nil {
 			errs = append(errs, err)
-			fmt.Println(err)
 		}
 		result = result && isValid
 	}
