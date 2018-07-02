@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	validator "gowork/go-validator"
+
+	validator "github.com/syssam/go-validator"
 )
 
 // User contains user information
