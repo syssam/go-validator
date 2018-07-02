@@ -128,32 +128,32 @@ func IsNull(str string) bool {
 }
 
 // Max is the validation function for validating if the current field's value is less than or equal to the param's value.
-func Max(v reflect.Value, param string) bool {
-	return IsLte(v, param)
+func Max(v reflect.Value, param ...string) bool {
+	return IsLte(v, param[0])
 }
 
 // Min is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func Min(v reflect.Value, param string) bool {
-	return IsGte(v, param)
+func Min(v reflect.Value, param ...string) bool {
+	return IsGte(v, param[0])
 }
 
 // IsLt is the validation function for validating if the current field's value is less than the param's value.
-func IsLt(v reflect.Value, param string) bool {
+func IsLt(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsLtString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return int64(v.Len()) < p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsLtInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param)
+		p, _ := ToUint(param[0])
 		return IsLtUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param)
+		p, _ := ToFloat(param[0])
 		return IsLtFloat64(v.Float(), p)
 	}
 
@@ -161,22 +161,22 @@ func IsLt(v reflect.Value, param string) bool {
 }
 
 // IsLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLte(v reflect.Value, param string) bool {
+func IsLte(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsLteString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return int64(v.Len()) <= p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsLteInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param)
+		p, _ := ToUint(param[0])
 		return IsLteUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param)
+		p, _ := ToFloat(param[0])
 		return IsLteFloat64(v.Float(), p)
 	}
 
@@ -184,22 +184,22 @@ func IsLte(v reflect.Value, param string) bool {
 }
 
 // IsGte is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsGte(v reflect.Value, param string) bool {
+func IsGte(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsGteString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return int64(v.Len()) >= p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsGteInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param)
+		p, _ := ToUint(param[0])
 		return IsGteUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param)
+		p, _ := ToFloat(param[0])
 		return IsGteFloat64(v.Float(), p)
 	}
 
@@ -207,22 +207,22 @@ func IsGte(v reflect.Value, param string) bool {
 }
 
 // IsGt is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGt(v reflect.Value, param string) bool {
+func IsGt(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsGtString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return int64(v.Len()) > p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param)
+		p, _ := ToInt(param[0])
 		return IsGtInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param)
+		p, _ := ToUint(param[0])
 		return IsGtUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param)
+		p, _ := ToFloat(param[0])
 		return IsGtFloat64(v.Float(), p)
 	}
 

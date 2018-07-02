@@ -31,6 +31,17 @@ var ParamRuleMap = map[string]ParamValidateFunc{
 	"between": Between,
 }
 
+// ParamsRuleMap is a map of functions, that can be used as tags for ValidateStruct function.
+var ParamsRuleMap = map[string]ParamValidateFunc{
+	"between": Between,
+	"gt":      IsGt,
+	"gte":     IsGte,
+	"lt":      IsLt,
+	"lte":     IsLte,
+	"min":     Min,
+	"max":     Max,
+}
+
 // StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when refelect type is string.
 var StringRulesMap = map[string]StringValidateFunc{
 	"email": IsEmail,
