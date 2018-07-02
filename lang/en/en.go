@@ -1,4 +1,4 @@
-package validator
+package en
 
 // MessageMap is a map of string, that can be used as error message for ValidateStruct function.
 var MessageMap = map[string]string{

@@ -3,6 +3,11 @@ package main
 import (
 	"fmt"
 	validator "gowork/go-validator"
+	"gowork/go-validator/lang/en"
+	"gowork/go-validator/lang/zh_CN"
+
+	validationEN "./lang/en"
+	validationZh_CN "./lang/zh_CN"
 )
 
 // User contains user information
@@ -23,10 +28,18 @@ type Address struct {
 }
 
 // use a single instance of Validate, it caches struct info
-var validate *validator.Validator
+var validatorInstance *validator.Validator
 
 func main() {
-	validate = validator.New()
+
+	validatorInstance = validator.New()
+	validatorInstance.Translator = validator.NewTranslator()
+	validatorInstance.Translator.SetMessage("en", en.MessageMap)
+	validatorInstance.Translator.SetMessage("zh_CN", zh_CN.MessageMap)
+	validatorInstance.Translator.SetAttributes("en", validationEN.AttributeMap)
+	validatorInstance.Translator.SetAttributes("zh_CN", validationZh_CN.AttributeMap)
+	validatorInstance.Translator.SetLocale("zh_CN")
+
 	address := &Address{
 		Street: "Eavesdown Docks",
 		Planet: "Persphone",
@@ -41,7 +54,7 @@ func main() {
 		Addresses: []*Address{address},
 	}
 
-	err := validate.Struct(user)
+	err := validatorInstance.Struct(user)
 	if err != nil {
 		for _, err := range err.(validator.Errors) {
 			fmt.Println(err)

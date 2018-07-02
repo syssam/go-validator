@@ -22,8 +22,6 @@ func (es Errors) Error() string {
 type Error struct {
 	Name       string
 	StructName string
-	Attribute  string
-	Param      map[string]string
 	Err        error
 
 	// Tag indicates the name of the validator that failed

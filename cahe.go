@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"sync"
@@ -20,25 +21,27 @@ type field struct {
 
 // A validTag represents parse validTag into field struct.
 type validTag struct {
-	name   string
-	params []string
+	name             string
+	params           []string
+	messageName      string
+	messageParameter messageParameterMap
 }
 
 var fieldCache sync.Map // map[reflect.Type][]field
 
-// cachedTypeFields is like typeFields but uses a cache to avoid repeated work.
-func cachedTypeFields(t reflect.Type) []field {
+// cachedTypefields is like typefields but uses a cache to avoid repeated work.
+func cachedTypefields(t reflect.Type) []field {
 	if f, ok := fieldCache.Load(t); ok {
 		return f.([]field)
 	}
-	f, _ := fieldCache.LoadOrStore(t, typeFields(t))
+	f, _ := fieldCache.LoadOrStore(t, typefields(t))
 	return f.([]field)
 }
 
-// typeFields returns a list of fields that JSON should recognize for the given type.
+// typefields returns a list of fields that JSON should recognize for the given type.
 // The algorithm is breadth-first search over the set of structs to include - the top struct
 // and then any reachable anonymous structs.
-func typeFields(t reflect.Type) []field {
+func typefields(t reflect.Type) []field {
 	current := []field{}
 	next := []field{{typ: t}}
 
@@ -80,7 +83,7 @@ func typeFields(t reflect.Type) []field {
 				}
 				validTag := sf.Tag.Get(tagName)
 				name := sf.Tag.Get("json")
-				if !isValidTag(name) {
+				if !isvalidTag(name) {
 					name = ""
 				}
 				if validTag == "-" || validTag == "" {
@@ -110,7 +113,7 @@ func typeFields(t reflect.Type) []field {
 						attribute:  sf.Name,
 						tag:        tagged,
 						index:      index,
-						validTags:  parseTagIntoArray(validTag),
+						validTags:  parseTagIntoArray(validTag, ft),
 						typ:        ft,
 					})
 
@@ -133,7 +136,7 @@ func typeFields(t reflect.Type) []field {
 						structName: t.Name() + "." + sf.Name,
 						attribute:  sf.Name,
 						index:      index,
-						validTags:  parseTagIntoArray(validTag),
+						validTags:  parseTagIntoArray(validTag, ft),
 						typ:        ft,
 					})
 				}
@@ -144,13 +147,13 @@ func typeFields(t reflect.Type) []field {
 	return fields
 }
 
-func parseTagIntoArray(tag string) []*validTag {
+func parseTagIntoArray(tag string, ft reflect.Type) []*validTag {
 	options := strings.Split(tag, ",")
 	var rules []*validTag
 	for _, option := range options {
 		option = strings.TrimSpace(option)
 
-		if !isValidTag(option) {
+		if !isvalidTag(option) {
 			continue
 		}
 
@@ -162,14 +165,16 @@ func parseTagIntoArray(tag string) []*validTag {
 		}
 
 		rules = append(rules, &validTag{
-			name:   tag[0],
-			params: params,
+			name:             tag[0],
+			params:           params,
+			messageName:      parseMessageName(tag[0], ft),
+			messageParameter: parseMessageParameterIntoMap(tag[0], params...),
 		})
 	}
 	return rules
 }
 
-func isValidTag(s string) bool {
+func isvalidTag(s string) bool {
 	if s == "" {
 		return false
 	}
@@ -186,4 +191,68 @@ func isValidTag(s string) bool {
 		}
 	}
 	return true
+}
+
+func parseMessageName(rule string, ft reflect.Type) string {
+	messageName := rule
+
+	switch rule {
+	case "between", "gt", "gte", "lt", "lte", "min", "max", "size":
+		switch ft.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16,
+			reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16,
+			reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64:
+			return messageName + ".numeric"
+		case reflect.String:
+			return messageName + ".string"
+		case reflect.Array, reflect.Slice, reflect.Map:
+			return messageName + ".array"
+		case reflect.Struct, reflect.Ptr:
+			return messageName
+		default:
+			return messageName
+		}
+	default:
+		return messageName
+	}
+}
+
+type messageParameterMap map[string]string
+
+func parseMessageParameterIntoMap(rule string, params ...string) messageParameterMap {
+	switch rule {
+	case "between", "digitsBetween":
+		if len(params) != 2 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"min": params[0],
+			"max": params[1],
+		}
+	case "gt", "gte", "lt", "lte":
+		if len(params) != 1 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"value": params[0],
+		}
+	case "max":
+		if len(params) != 1 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"max": params[0],
+		}
+	case "min":
+		if len(params) != 1 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"min": params[0],
+		}
+	}
+
+	return nil
 }

@@ -11,7 +11,7 @@ import (
 const tagName string = "valid"
 
 type Validator struct {
-	Translator    func(structName string, tag string, attribute string, params map[string]string) error
+	Translator    *Translator
 	Attributes    map[string]string
 	CustomMessage map[string]string
 }
@@ -68,21 +68,6 @@ func IsEmail(str string) bool {
 	// TODO uppercase letters are not supported
 	return rxEmail.MatchString(str)
 }
-
-/*
-// Between check string's length
-func Between(str string, params ...string) bool {
-
-	if len(params) == 2 {
-		value, _ := ToFloat(str)
-		min, _ := ToFloat(params[0])
-		max, _ := ToFloat(params[1])
-		return DigitsBetween(value, min, max)
-	}
-
-	return false
-}
-*/
 
 // Between check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
 func Between(v reflect.Value, params ...string) bool {
@@ -264,11 +249,11 @@ func ValidateStruct(s interface{}) (bool, error) {
 
 	var errs Errors
 	result := true
-	fields := cachedTypeFields(val.Type())
+	fields := cachedTypefields(val.Type())
 
 	for _, f := range fields {
-		valueField := val.Field(f.index[0])
-		isValid, err := valid(valueField, &f, val)
+		valuefield := val.Field(f.index[0])
+		isValid, err := valid(valuefield, &f, val)
 		if err != nil {
 			errs = append(errs, err)
 			fmt.Println(err)
@@ -289,8 +274,7 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 			return false, &Error{
 				Name:       f.name,
 				StructName: f.structName,
-				Attribute:  f.attribute,
-				Err:        formatsMessages(f.structName, tag.name, f.attribute, nil),
+				Err:        formatsMessages(tag, v, f, o),
 				Tag:        tag.name,
 			}
 		}
@@ -299,12 +283,8 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 			return false, &Error{
 				Name:       f.name,
 				StructName: f.structName,
-				Attribute:  f.attribute,
-				Err: formatsMessages(f.structName, tag.name, f.attribute, map[string]string{
-					"other": tag.params[0],
-					"value": strings.Join(tag.params[1:], ","),
-				}),
-				Tag: tag.name,
+				Err:        formatsMessages(tag, v, f, o),
+				Tag:        tag.name,
 			}
 		}
 	}
@@ -324,8 +304,7 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 					return false, &Error{
 						Name:       f.name,
 						StructName: f.structName,
-						Attribute:  f.attribute,
-						Err:        formatsMessages(f.structName, tag.name, f.attribute, nil),
+						Err:        formatsMessages(tag, v, f, o),
 						Tag:        tag.name,
 					}
 				}
@@ -337,8 +316,7 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 					return false, &Error{
 						Name:       f.name,
 						StructName: f.structName,
-						Attribute:  f.attribute,
-						Err:        formatsMessages(f.structName, tag.name, f.attribute, nil),
+						Err:        formatsMessages(tag, v, f, o),
 						Tag:        tag.name,
 					}
 				}
@@ -352,8 +330,7 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 						return false, Error{
 							Name:       f.name,
 							StructName: f.structName,
-							Attribute:  f.attribute,
-							Err:        formatsMessages(f.structName, tag.name, f.attribute, nil),
+							Err:        formatsMessages(tag, v, f, o),
 							Tag:        tag.name,
 						}
 					}
@@ -481,28 +458,36 @@ func (sv stringValues) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
-func formatsMessages(structName string, tag string, attribute string, params map[string]string) error {
+func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Value) error {
 	validator := New()
 	if validator.Translator != nil {
-		return validator.Translator(structName, tag, attribute, params)
-	}
-
-	if m, ok := validator.CustomMessage[structName+"."+tag]; ok {
-		return fmt.Errorf(m)
-	}
-
-	message, ok := MessageMap[tag]
-	if ok {
-		if a, ok := validator.Attributes[structName]; ok {
-			attribute = a
-		}
-
-		message = strings.Replace(message, ":attribute", attribute, -1)
-		for key, value := range params {
-			message = strings.Replace(message, ":"+key, value, -1)
-		}
+		message := validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
+		message = replaceAttributes(message, "", validTag.messageParameter)
 		return fmt.Errorf(message)
 	}
 
-	return fmt.Errorf("validator: undefined message : %s", tag)
+	if m, ok := validator.CustomMessage[f.structName+"."+validTag.messageName]; ok {
+		return fmt.Errorf(m)
+	}
+
+	message, ok := MessageMap[validTag.messageName]
+	if ok {
+		attribute := f.attribute
+		if customAttribute, ok := validator.Attributes[f.structName]; ok {
+			attribute = customAttribute
+		}
+
+		message = replaceAttributes(message, attribute, validTag.messageParameter)
+		return fmt.Errorf(message)
+	}
+
+	return fmt.Errorf("validator: undefined message : %s", validTag.messageName)
+}
+
+func replaceAttributes(message string, attribute string, messageParameter messageParameterMap) string {
+	strings.Replace(message, ":attribute", attribute, -1)
+	for key, value := range messageParameter {
+		message = strings.Replace(message, ":"+key, value, -1)
+	}
+	return message
 }
