@@ -1,6 +1,9 @@
 package validator
 
-import "strings"
+import (
+	"bytes"
+	"strings"
+)
 
 // Errors is an array of multiple errors and conforms to the error interface.
 type Errors []error
@@ -11,11 +14,14 @@ func (es Errors) Errors() []error {
 }
 
 func (es Errors) Error() string {
-	var errs []string
+	buff := bytes.NewBufferString("")
+
 	for _, e := range es {
-		errs = append(errs, e.Error())
+		buff.WriteString(e.Error())
+		buff.WriteString("\n")
 	}
-	return strings.Join(errs, ";")
+
+	return strings.TrimSpace(buff.String())
 }
 
 // Error encapsulates a name, an error and whether there's a custom error message or not.
