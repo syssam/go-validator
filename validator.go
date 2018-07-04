@@ -236,7 +236,7 @@ func ValidateStruct(s interface{}) (bool, error) {
 		return false, nil
 	}
 
-	//var err error
+	var err error
 
 	val := reflect.ValueOf(s)
 	if val.Kind() == reflect.Interface || val.Kind() == reflect.Ptr {
@@ -260,7 +260,11 @@ func ValidateStruct(s interface{}) (bool, error) {
 		result = result && isValid
 	}
 
-	return result, errs
+	if len(errs) > 0 {
+		err = errs
+	}
+
+	return result, err
 }
 
 func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr error) {
@@ -416,9 +420,7 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 		if v.IsNil() {
 			return true, nil
 		}
-
 		return ValidateStruct(v.Interface())
-
 	case reflect.Struct:
 		return ValidateStruct(v.Interface())
 	default:
