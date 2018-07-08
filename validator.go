@@ -486,7 +486,7 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 }
 
 func replaceAttributes(message string, attribute string, messageParameter messageParameterMap) string {
-	strings.Replace(message, ":attribute", attribute, -1)
+	message = strings.Replace(message, ":attribute", attribute, -1)
 	for key, value := range messageParameter {
 		message = strings.Replace(message, ":"+key, value, -1)
 	}
