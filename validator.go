@@ -277,11 +277,14 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		return nil
 	}
 
+	name := string(append(jsonNamespace, f.nameBytes...))
+	structName := string(append(structNamespace, f.structName...))
+
 	for _, tag := range f.validTags {
 		if tag.name == "required" && isEmptyValue(v) {
 			return &Error{
-				Name:       f.name,
-				StructName: f.structName,
+				Name:       name,
+				StructName: structName,
 				Err:        formatsMessages(tag, v, f, o),
 				Tag:        tag.name,
 			}
@@ -289,8 +292,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 
 		if tag.name == "requiredIf" && len(tag.params) >= 2 && IsRequiredIf(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
 			return &Error{
-				Name:       f.name,
-				StructName: f.structName,
+				Name:       name,
+				StructName: structName,
 				Err:        formatsMessages(tag, v, f, o),
 				Tag:        tag.name,
 			}
@@ -310,8 +313,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				isValid := validfunc(v)
 				if !isValid {
 					return &Error{
-						Name:       f.name,
-						StructName: f.structName,
+						Name:       name,
+						StructName: structName,
 						Err:        formatsMessages(tag, v, f, o),
 						Tag:        tag.name,
 					}
@@ -322,8 +325,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
 					return &Error{
-						Name:       f.name,
-						StructName: f.structName,
+						Name:       name,
+						StructName: structName,
 						Err:        formatsMessages(tag, v, f, o),
 						Tag:        tag.name,
 					}
@@ -336,8 +339,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 					isValid := validfunc(v.String())
 					if !isValid {
 						return &Error{
-							Name:       f.name,
-							StructName: f.structName,
+							Name:       name,
+							StructName: structName,
 							Err:        formatsMessages(tag, v, f, o),
 							Tag:        tag.name,
 						}
@@ -356,8 +359,10 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
 					return &Error{
-						Name: f.name,
-						Tag:  tag.name,
+						Name:       name,
+						StructName: structName,
+						Err:        formatsMessages(tag, v, f, o),
+						Tag:        tag.name,
 					}
 				}
 			}
@@ -374,6 +379,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 					return err
 				}
 			} else {
+				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
+				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
 				err = validateStruct(v.MapIndex(k).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
 					return err
@@ -387,8 +394,10 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
 					return &Error{
-						Name: f.name,
-						Tag:  tag.name,
+						Name:       name,
+						StructName: structName,
+						Err:        formatsMessages(tag, v, f, o),
+						Tag:        tag.name,
 					}
 				}
 			}
@@ -401,6 +410,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 					return err
 				}
 			} else {
+				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
+				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
 				err = validateStruct(v.Index(i).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
 					return err
@@ -419,8 +430,13 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		if v.IsNil() {
 			return nil
 		}
+
+		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
+		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
 		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Struct:
+		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
+		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
 		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	default:
 		return &UnsupportedTypeError{v.Type()}

@@ -10,13 +10,15 @@ import (
 
 // A field represents a single field found in a struct.
 type field struct {
-	name       string
-	structName string
-	attribute  string
-	tag        bool
-	index      []int
-	validTags  []*validTag
-	typ        reflect.Type
+	name            string
+	nameBytes       []byte // []byte(name)
+	structName      string
+	structNameBytes []byte // []byte(structName)
+	attribute       string
+	tag             bool
+	index           []int
+	validTags       []*validTag
+	typ             reflect.Type
 }
 
 // A validTag represents parse validTag into field struct.
@@ -108,13 +110,15 @@ func typefields(t reflect.Type) []field {
 					}
 
 					fields = append(fields, field{
-						name:       name,
-						structName: t.Name() + "." + sf.Name,
-						attribute:  sf.Name,
-						tag:        tagged,
-						index:      index,
-						validTags:  parseTagIntoArray(validTag, ft),
-						typ:        ft,
+						name:            name,
+						nameBytes:       []byte(name),
+						structName:      t.Name() + "." + sf.Name,
+						structNameBytes: []byte(t.Name() + "." + sf.Name),
+						attribute:       sf.Name,
+						tag:             tagged,
+						index:           index,
+						validTags:       parseTagIntoArray(validTag, ft),
+						typ:             ft,
 					})
 
 					if count[f.typ] > 1 {
@@ -132,12 +136,14 @@ func typefields(t reflect.Type) []field {
 				nextCount[ft]++
 				if nextCount[ft] == 1 {
 					next = append(next, field{
-						name:       sf.Name,
-						structName: t.Name() + "." + sf.Name,
-						attribute:  sf.Name,
-						index:      index,
-						validTags:  parseTagIntoArray(validTag, ft),
-						typ:        ft,
+						name:            sf.Name,
+						nameBytes:       []byte(sf.Name),
+						structName:      t.Name() + "." + sf.Name,
+						structNameBytes: []byte(t.Name() + "." + sf.Name),
+						attribute:       sf.Name,
+						index:           index,
+						validTags:       parseTagIntoArray(validTag, ft),
+						typ:             ft,
 					})
 				}
 			}
