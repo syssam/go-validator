@@ -19,18 +19,12 @@ type Validator struct {
 var loadValidatorOnce *Validator
 var once sync.Once
 
-// New returns a new instance of 'valid' with sane defaults.
-func New() *Validator {
+// newValidator returns a new instance of 'valid' with sane defaults.
+func newValidator() *Validator {
 	once.Do(func() {
 		loadValidatorOnce = &Validator{}
 	})
 	return loadValidatorOnce
-}
-
-// Struct as gin binding function needed
-func (v *Validator) Struct(s interface{}) error {
-	_, err := ValidateStruct(s)
-	return err
 }
 
 // IsRequiredIf check value required when anotherfield str is a member of the set of strings params
@@ -229,9 +223,7 @@ func IsGt(v reflect.Value, param ...string) bool {
 	panic(fmt.Sprintf("validator: IsGt unsupport Type %T", v.Interface()))
 }
 
-// ValidateStruct use tags for fields.
-// result will be equal to `false` if there are any errors.
-func ValidateStruct(s interface{}) (bool, error) {
+func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) (bool, error) {
 	if s == nil {
 		return false, nil
 	}
@@ -253,7 +245,7 @@ func ValidateStruct(s interface{}) (bool, error) {
 
 	for _, f := range fields {
 		valuefield := val.Field(f.index[0])
-		isValid, err := valid(valuefield, &f, val)
+		isValid, err := newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -267,7 +259,14 @@ func ValidateStruct(s interface{}) (bool, error) {
 	return result, err
 }
 
-func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr error) {
+// ValidateStruct use tags for fields.
+// result will be equal to `false` if there are any errors.
+func ValidateStruct(s interface{}) (bool, error) {
+	newValidator()
+	return validateStruct(s, nil, nil)
+}
+
+func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (isValid bool, resultErr error) {
 	if !v.IsValid() {
 		return false, nil
 	}
@@ -366,12 +365,12 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 			var resultItem bool
 			var err error
 			if v.MapIndex(k).Kind() != reflect.Struct {
-				resultItem, err = valid(v.MapIndex(k), f, o)
+				resultItem, err = newTypeValidator(v.MapIndex(k), f, o, jsonNamespace, structNamespace)
 				if err != nil {
 					return false, err
 				}
 			} else {
-				resultItem, err = ValidateStruct(v.MapIndex(k).Interface())
+				resultItem, err = validateStruct(v.MapIndex(k).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
 					return false, err
 				}
@@ -396,12 +395,12 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 			var resultItem bool
 			var err error
 			if v.Index(i).Kind() != reflect.Struct {
-				resultItem, err = valid(v.Index(i), f, o)
+				resultItem, err = newTypeValidator(v.Index(i), f, o, jsonNamespace, structNamespace)
 				if err != nil {
 					return false, err
 				}
 			} else {
-				resultItem, err = ValidateStruct(v.Index(i).Interface())
+				resultItem, err = validateStruct(v.Index(i).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
 					return false, err
 				}
@@ -414,15 +413,15 @@ func valid(v reflect.Value, f *field, o reflect.Value) (isValid bool, resultErr 
 		if v.IsNil() {
 			return true, nil
 		}
-		return ValidateStruct(v.Interface())
+		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Ptr:
 		// If the value is a pointer then check its element
 		if v.IsNil() {
 			return true, nil
 		}
-		return ValidateStruct(v.Interface())
+		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Struct:
-		return ValidateStruct(v.Interface())
+		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	default:
 		return false, &UnsupportedTypeError{v.Type()}
 	}
@@ -460,7 +459,7 @@ func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
 func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Value) error {
-	validator := New()
+	validator := newValidator()
 	if validator.Translator != nil {
 		message := validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
 		message = replaceAttributes(message, "", validTag.messageParameter)

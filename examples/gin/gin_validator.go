@@ -18,7 +18,7 @@ var _ binding.StructValidator = &DefaultValidator{}
 // ValidateStruct return error
 func (v *DefaultValidator) ValidateStruct(obj interface{}) error {
 	v.lazyinit()
-	if err := v.validate.Struct(obj); err != nil {
+	if err := validator.ValidateStruct(obj); err != nil {
 		return error(err)
 	}
 	return nil
