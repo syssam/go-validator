@@ -19,6 +19,14 @@ type Validator struct {
 var loadValidatorOnce *Validator
 var once sync.Once
 
+// New returns a new instance of 'valid' with sane defaults.
+func New() *Validator {
+	once.Do(func() {
+		loadValidatorOnce = &Validator{}
+	})
+	return loadValidatorOnce
+}
+
 // newValidator returns a new instance of 'valid' with sane defaults.
 func newValidator() *Validator {
 	once.Do(func() {
@@ -223,9 +231,9 @@ func IsGt(v reflect.Value, param ...string) bool {
 	panic(fmt.Sprintf("validator: IsGt unsupport Type %T", v.Interface()))
 }
 
-func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) (bool, error) {
+func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
 	if s == nil {
-		return false, nil
+		return nil
 	}
 
 	var err error
@@ -236,44 +244,42 @@ func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte)
 	}
 	// we only accept structs
 	if val.Kind() != reflect.Struct {
-		return false, fmt.Errorf("function only accepts structs; got %s", val.Kind())
+		return fmt.Errorf("function only accepts structs; got %s", val.Kind())
 	}
 
 	var errs Errors
-	result := true
 	fields := cachedTypefields(val.Type())
 
 	for _, f := range fields {
 		valuefield := val.Field(f.index[0])
-		isValid, err := newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
+		err := newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		result = result && isValid
 	}
 
 	if len(errs) > 0 {
 		err = errs
 	}
 
-	return result, err
+	return err
 }
 
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
-func ValidateStruct(s interface{}) (bool, error) {
+func ValidateStruct(s interface{}) error {
 	newValidator()
 	return validateStruct(s, nil, nil)
 }
 
-func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (isValid bool, resultErr error) {
+func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
 	if !v.IsValid() {
-		return false, nil
+		return nil
 	}
 
 	for _, tag := range f.validTags {
 		if tag.name == "required" && isEmptyValue(v) {
-			return false, &Error{
+			return &Error{
 				Name:       f.name,
 				StructName: f.structName,
 				Err:        formatsMessages(tag, v, f, o),
@@ -282,7 +288,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		}
 
 		if tag.name == "requiredIf" && len(tag.params) >= 2 && IsRequiredIf(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
-			return false, &Error{
+			return &Error{
 				Name:       f.name,
 				StructName: f.structName,
 				Err:        formatsMessages(tag, v, f, o),
@@ -303,7 +309,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := RuleMap[tag.name]; ok {
 				isValid := validfunc(v)
 				if !isValid {
-					return false, &Error{
+					return &Error{
 						Name:       f.name,
 						StructName: f.structName,
 						Err:        formatsMessages(tag, v, f, o),
@@ -315,7 +321,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
-					return false, &Error{
+					return &Error{
 						Name:       f.name,
 						StructName: f.structName,
 						Err:        formatsMessages(tag, v, f, o),
@@ -329,7 +335,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				if validfunc, ok := StringRulesMap[tag.name]; ok {
 					isValid := validfunc(v.String())
 					if !isValid {
-						return false, Error{
+						return &Error{
 							Name:       f.name,
 							StructName: f.structName,
 							Err:        formatsMessages(tag, v, f, o),
@@ -339,17 +345,17 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				}
 			}
 		}
-		return true, nil
+		return nil
 	case reflect.Map:
 		if v.Type().Key().Kind() != reflect.String {
-			return false, &UnsupportedTypeError{v.Type()}
+			return &UnsupportedTypeError{v.Type()}
 		}
 
 		for _, tag := range f.validTags {
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
-					return false, &Error{
+					return &Error{
 						Name: f.name,
 						Tag:  tag.name,
 					}
@@ -360,70 +366,64 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		var sv stringValues
 		sv = v.MapKeys()
 		sort.Sort(sv)
-		result := true
 		for _, k := range sv {
-			var resultItem bool
 			var err error
 			if v.MapIndex(k).Kind() != reflect.Struct {
-				resultItem, err = newTypeValidator(v.MapIndex(k), f, o, jsonNamespace, structNamespace)
+				err = newTypeValidator(v.MapIndex(k), f, o, jsonNamespace, structNamespace)
 				if err != nil {
-					return false, err
+					return err
 				}
 			} else {
-				resultItem, err = validateStruct(v.MapIndex(k).Interface(), jsonNamespace, structNamespace)
+				err = validateStruct(v.MapIndex(k).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
-					return false, err
+					return err
 				}
 			}
-			result = result && resultItem
 		}
-		return result, nil
+		return nil
 	case reflect.Slice, reflect.Array:
 		for _, tag := range f.validTags {
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
-					return false, &Error{
+					return &Error{
 						Name: f.name,
 						Tag:  tag.name,
 					}
 				}
 			}
 		}
-		result := true
 		for i := 0; i < v.Len(); i++ {
-			var resultItem bool
 			var err error
 			if v.Index(i).Kind() != reflect.Struct {
-				resultItem, err = newTypeValidator(v.Index(i), f, o, jsonNamespace, structNamespace)
+				err = newTypeValidator(v.Index(i), f, o, jsonNamespace, structNamespace)
 				if err != nil {
-					return false, err
+					return err
 				}
 			} else {
-				resultItem, err = validateStruct(v.Index(i).Interface(), jsonNamespace, structNamespace)
+				err = validateStruct(v.Index(i).Interface(), jsonNamespace, structNamespace)
 				if err != nil {
-					return false, err
+					return err
 				}
 			}
-			result = result && resultItem
 		}
-		return result, nil
+		return nil
 	case reflect.Interface:
 		// If the value is an interface then encode its element
 		if v.IsNil() {
-			return true, nil
+			return nil
 		}
 		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Ptr:
 		// If the value is a pointer then check its element
 		if v.IsNil() {
-			return true, nil
+			return nil
 		}
 		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Struct:
 		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	default:
-		return false, &UnsupportedTypeError{v.Type()}
+		return &UnsupportedTypeError{v.Type()}
 	}
 }
 

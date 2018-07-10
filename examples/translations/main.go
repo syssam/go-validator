@@ -5,9 +5,8 @@ import (
 
 	validator "github.com/syssam/go-validator"
 	lang_en "github.com/syssam/go-validator/examples/translations/lang/en"
-	lang_zhCN "github.com/syssam/go-validator/examples/translations/lang/zh_CN"
 	validator_en "github.com/syssam/go-validator/lang/en"
-	validator_zhCN "github.com/syssam/go-validator/lang/zh_CN"
+	validator_zh_CN "github.com/syssam/go-validator/lang/zh_CN"
 )
 
 // User contains user information
@@ -27,18 +26,14 @@ type Address struct {
 	Phone  string `valid:"required"`
 }
 
-// use a single instance of Validate, it caches struct info
-var validatorInstance *validator.Validator
-
 func main() {
-
-	validatorInstance = validator.New()
-	validatorInstance.Translator = validator.NewTranslator()
-	validatorInstance.Translator.SetMessage("en", validator_en.MessageMap)
-	validatorInstance.Translator.SetMessage("zh_CN", validator_zhCN.MessageMap)
-	validatorInstance.Translator.SetAttributes("en", lang_en.AttributeMap)
-	validatorInstance.Translator.SetAttributes("zh_CN", lang_zhCN.AttributeMap)
-	validatorInstance.Translator.SetLocale("zh_CN")
+	validator = validator.New()
+	validator.Translator = validator.NewTranslator()
+	validator.Translator.SetMessage("en", validator_en.MessageMap)
+	validator.Translator.SetMessage("zh_CN", validator_zh_CN.MessageMap)
+	validator.Translator.SetAttributes("en", lang_en.AttributeMap)
+	validator.Translator.SetAttributes("zh_CN", validator_zh_CN.AttributeMap)
+	validator.Translator.SetLocale("zh_CN")
 
 	address := &Address{
 		Street: "Eavesdown Docks",

@@ -23,11 +23,7 @@ type Address struct {
 	Phone  string `valid:"required"`
 }
 
-// use a single instance of Validate, it caches struct info
-var validate *validator.Validator
-
 func main() {
-	validate = validator.New()
 	address := &Address{
 		Street: "Eavesdown Docks",
 		Planet: "Persphone",
@@ -42,7 +38,7 @@ func main() {
 		Addresses: []*Address{address},
 	}
 
-	err := validate.Struct(user)
+	err := validator.ValidateStruct(user)
 	if err != nil {
 		for _, err := range err.(validator.Errors) {
 			fmt.Println(err)
