@@ -1,6 +1,8 @@
 package validator
 
-import "strings"
+import (
+	"bytes"
+)
 
 // Errors is an array of multiple errors and conforms to the error interface.
 type Errors []error
@@ -11,11 +13,36 @@ func (es Errors) Errors() []error {
 }
 
 func (es Errors) Error() string {
-	var errs []string
+	var buff bytes.Buffer
+	first := true
 	for _, e := range es {
-		errs = append(errs, e.Error())
+		if first {
+			first = false
+		} else {
+			buff.WriteByte('\n')
+		}
+		buff.WriteString(e.Error())
 	}
-	return strings.Join(errs, "\n")
+	return buff.String()
+}
+
+// JSON output json format.
+func (es Errors) JSON() string {
+	var buff bytes.Buffer
+	first := true
+	buff.WriteByte('{')
+	for _, e := range es {
+		if first {
+			first = false
+		} else {
+			buff.WriteByte(',')
+		}
+		buff.WriteString(e.(Error).Name)
+		buff.WriteByte(':')
+		buff.WriteString(e.Error())
+	}
+	buff.WriteByte('}')
+	return buff.String()
 }
 
 // Error encapsulates a name, an error and whether there's a custom error message or not.
@@ -29,5 +56,5 @@ type Error struct {
 }
 
 func (e Error) Error() string {
-	return e.Name + ": " + e.Err.Error()
+	return e.Err.Error()
 }
