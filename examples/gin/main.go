@@ -54,6 +54,10 @@ func main() {
 		if err := c.ShouldBind(&form); err == nil {
 			c.JSON(http.StatusOK, &form)
 		} else {
+			if err.(validator.Errors) != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.(validator.Errors)})
+				return
+			}
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 	})

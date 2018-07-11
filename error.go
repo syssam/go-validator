@@ -26,8 +26,8 @@ func (es Errors) Error() string {
 	return buff.String()
 }
 
-// JSON output json format.
-func (es Errors) JSON() string {
+// MarshalJSON output Json format.
+func (es Errors) MarshalJSON() ([]byte, error) {
 	var buff bytes.Buffer
 	first := true
 	buff.WriteByte('{')
@@ -37,12 +37,16 @@ func (es Errors) JSON() string {
 		} else {
 			buff.WriteByte(',')
 		}
-		buff.WriteString(e.(Error).Name)
+		buff.WriteByte('"')
+		buff.WriteString(e.(*Error).Name)
+		buff.WriteByte('"')
 		buff.WriteByte(':')
+		buff.WriteByte('"')
 		buff.WriteString(e.Error())
+		buff.WriteByte('"')
 	}
 	buff.WriteByte('}')
-	return buff.String()
+	return buff.Bytes(), nil
 }
 
 // Error encapsulates a name, an error and whether there's a custom error message or not.
