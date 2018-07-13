@@ -16,28 +16,18 @@
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/gin">Gin</a></li>
 </ul>
 <h2>Available Validation Rules</h2>
-<style>
-    .collection-method-list > p {
-        column-count: 3; -moz-column-count: 3; -webkit-column-count: 3;
-        column-gap: 2em; -moz-column-gap: 2em; -webkit-column-gap: 2em;
-    }
-
-    .collection-method-list a {
-        display: block;
-    }
-</style>
 <div class="collection-method-list">
-  <p>
-    <a>required</a>
-    <a>requiredIf</a>
-    <a>email</a>
-    <a>between</a>
-    <a>max</a>
-    <a>min</a>
-    <a>gt - TO DO</a>
-    <a>gte - TO DO</a>
-    <a>lt - TO DO</a>
-    <a>lte - TO DO</a>
+  <p style="column-count: 3; -moz-column-count: 3; -webkit-column-count: 3; column-gap: 2em; -moz-column-gap: 2em; -webkit-column-gap: 2em;">
+    <a style="display: block;">required</a>
+    <a style="display: block;">requiredIf</a>
+    <a style="display: block;">email</a>
+    <a style="display: block;">between</a>
+    <a style="display: block;">max</a>
+    <a style="display: block;">min</a>
+    <a style="display: block;">gt - TO DO</a>
+    <a style="display: block;">gte - TO DO</a>
+    <a style="display: block;">lt - TO DO</a>
+    <a style="display: block;">lte - TO DO</a>
   </p>
 </div>
 <h4 id="rule-required">required</h4>
