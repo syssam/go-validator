@@ -16,20 +16,18 @@
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/gin">Gin</a></li>
 </ul>
 <h2>Available Validation Rules</h2>
-<div class="collection-method-list">
-  <p style="column-count: 3; -moz-column-count: 3; -webkit-column-count: 3; column-gap: 2em; -moz-column-gap: 2em; -webkit-column-gap: 2em;">
-    <a style="display: block;">required</a>
-    <a style="display: block;">requiredIf</a>
-    <a style="display: block;">email</a>
-    <a style="display: block;">between</a>
-    <a style="display: block;">max</a>
-    <a style="display: block;">min</a>
-    <a style="display: block;">gt - TO DO</a>
-    <a style="display: block;">gte - TO DO</a>
-    <a style="display: block;">lt - TO DO</a>
-    <a style="display: block;">lte - TO DO</a>
-  </p>
-</div>
+<ul>
+    <li><a>required</a></li>
+    <li><a>requiredIf</a></li>
+    <li><a>email</a></li>
+    <li><a>between</a></li>
+    <li><a>max</a></li>
+    <li><a>min</a></li>
+    <li><a>gt - TO DO</a></li>
+    <li><a>gte - TO DO</a></li>
+    <li><a>lt - TO DO</a></li>
+    <li><a>lte - TO DO</a></li>
+</ul>
 <h4 id="rule-required">required</h4>
 <p>The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:</p>
 <div class="content-list">
