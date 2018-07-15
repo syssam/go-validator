@@ -17,7 +17,8 @@ type field struct {
 	attribute       string
 	tag             bool
 	index           []int
-	validTags       []*validTag
+	requiredTags    requiredTags
+	validTags       otherValidTags
 	typ             reflect.Type
 }
 
@@ -28,6 +29,12 @@ type validTag struct {
 	messageName      string
 	messageParameter messageParameterMap
 }
+
+// A otherValidTags represents parse validTag into field struct when validTag is not required...
+type otherValidTags []*validTag
+
+// A requiredTags represents parse validTag into field struct when validTag is required...
+type requiredTags []*validTag
 
 var fieldCache sync.Map // map[reflect.Type][]field
 
@@ -109,6 +116,8 @@ func typefields(t reflect.Type) []field {
 						name = sf.Name
 					}
 
+					requiredTags, otherValidTags := parseTagIntoArray(validTag, ft)
+
 					fields = append(fields, field{
 						name:            name,
 						nameBytes:       []byte(name),
@@ -117,7 +126,8 @@ func typefields(t reflect.Type) []field {
 						attribute:       sf.Name,
 						tag:             tagged,
 						index:           index,
-						validTags:       parseTagIntoArray(validTag, ft),
+						requiredTags:    requiredTags,
+						validTags:       otherValidTags,
 						typ:             ft,
 					})
 
@@ -135,6 +145,8 @@ func typefields(t reflect.Type) []field {
 				// Record new anonymous struct to explore in next round.
 				nextCount[ft]++
 				if nextCount[ft] == 1 {
+					requiredTags, otherValidTags := parseTagIntoArray(validTag, ft)
+
 					next = append(next, field{
 						name:            sf.Name,
 						nameBytes:       []byte(sf.Name),
@@ -142,7 +154,8 @@ func typefields(t reflect.Type) []field {
 						structNameBytes: []byte(t.Name() + "." + sf.Name),
 						attribute:       sf.Name,
 						index:           index,
-						validTags:       parseTagIntoArray(validTag, ft),
+						requiredTags:    requiredTags,
+						validTags:       otherValidTags,
 						typ:             ft,
 					})
 				}
@@ -153,9 +166,11 @@ func typefields(t reflect.Type) []field {
 	return fields
 }
 
-func parseTagIntoArray(tag string, ft reflect.Type) []*validTag {
+func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTags) {
 	options := strings.Split(tag, ",")
-	var rules []*validTag
+	var otherValidTags otherValidTags
+	var requiredTags requiredTags
+
 	for _, option := range options {
 		option = strings.TrimSpace(option)
 
@@ -170,14 +185,25 @@ func parseTagIntoArray(tag string, ft reflect.Type) []*validTag {
 			params = strings.Split(tag[1], "|")
 		}
 
-		rules = append(rules, &validTag{
+		switch tag[0] {
+		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+			requiredTags = append(requiredTags, &validTag{
+				name:             tag[0],
+				params:           params,
+				messageName:      parseMessageName(tag[0], ft),
+				messageParameter: parseMessageParameterIntoMap(tag[0], params...),
+			})
+			continue
+		}
+
+		otherValidTags = append(otherValidTags, &validTag{
 			name:             tag[0],
 			params:           params,
 			messageName:      parseMessageName(tag[0], ft),
 			messageParameter: parseMessageParameterIntoMap(tag[0], params...),
 		})
 	}
-	return rules
+	return requiredTags, otherValidTags
 }
 
 func isvalidTag(s string) bool {

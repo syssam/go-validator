@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"sort"
@@ -280,31 +281,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 	name := string(append(jsonNamespace, f.nameBytes...))
 	structName := string(append(structNamespace, f.structName...))
 
-	for _, tag := range f.validTags {
-		if tag.name == "required" && isEmptyValue(v) {
-			return &Error{
-				Name:       name,
-				StructName: structName,
-				Err:        formatsMessages(tag, v, f, o),
-				Tag:        tag.name,
-			}
-		}
-
-		if tag.name == "requiredIf" && len(tag.params) >= 2 && IsRequiredIf(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
-			return &Error{
-				Name:       name,
-				StructName: structName,
-				Err:        formatsMessages(tag, v, f, o),
-				Tag:        tag.name,
-			}
-		}
-	}
-
-	for _, tag := range f.validTags {
-		if validatefunc, ok := CustomTypeTagMap.Get(tag.name); ok {
-			if isValid := validatefunc(v, f, o); !isValid {
-			}
-		}
+	if err := checkRequired(v, f, o, name, structName); err != nil {
+		return err
 	}
 
 	switch v.Kind() {
@@ -481,11 +459,128 @@ func (sv stringValues) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
+// IsRequiredUnless check value required when anotherfield str is a member of the set of strings params
+func IsRequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+	switch anotherfield.Kind() {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64,
+		reflect.String:
+
+		if !IsIn(anotherfield.String(), params...) {
+			return isEmptyValue(v)
+		}
+
+		return false
+	}
+
+	return false
+}
+
+func allFailingRequired(parameters []string, v reflect.Value) bool {
+	for _, p := range parameters {
+		if isEmptyValue(v.FieldByName(p)) {
+			return false
+		}
+	}
+	return false
+}
+
+func anyFailingRequired(parameters []string, v reflect.Value) bool {
+	for _, p := range parameters {
+		if isEmptyValue(v.FieldByName(p)) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, structName string) error {
+	for _, tag := range f.requiredTags {
+		result := false
+		switch tag.name {
+		case "required":
+			result = isEmptyValue(v)
+		case "requiredIf":
+			if len(tag.params) >= 2 && IsRequiredIf(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
+				result = true
+			}
+		case "requiredUnless":
+			if len(tag.params) >= 2 && IsRequiredUnless(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
+				result = true
+			}
+		case "requiredWith":
+			if IsRequiredWith(tag.params, v) {
+				result = true
+			}
+		case "requiredWithAll":
+			if IsRequiredWith(tag.params, v) {
+				result = true
+			}
+		case "requiredWithout":
+			if IsRequiredWith(tag.params, v) {
+				result = true
+			}
+		case "requiredWithoutAll":
+			if IsRequiredWith(tag.params, v) {
+				result = true
+			}
+		}
+
+		if result {
+			return &Error{
+				Name:       name,
+				StructName: structName,
+				Err:        formatsMessages(tag, v, f, o),
+				Tag:        tag.name,
+			}
+		}
+	}
+
+	return nil
+}
+
+// IsRequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
+func IsRequiredWith(otherFields []string, v reflect.Value) bool {
+	if !allFailingRequired(otherFields, v) {
+		return isEmptyValue(v)
+	}
+	return false
+}
+
+// IsRequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
+func IsRequiredWithAll(otherFields []string, v reflect.Value) bool {
+	if !anyFailingRequired(otherFields, v) {
+		return isEmptyValue(v)
+	}
+	return false
+}
+
+// IsRequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
+func IsRequiredWithout(otherFields []string, v reflect.Value) bool {
+	if anyFailingRequired(otherFields, v) {
+		return isEmptyValue(v)
+	}
+	return false
+}
+
+// IsRequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
+func IsRequiredWithoutAll(otherFields []string, v reflect.Value) bool {
+	if allFailingRequired(otherFields, v) {
+		return isEmptyValue(v)
+	}
+	return false
+}
+
 func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Value) error {
 	validator := newValidator()
 	if validator.Translator != nil {
 		message := validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
 		message = replaceAttributes(message, "", validTag.messageParameter)
+		if shouldReplaceRequiredWith(validTag.name) {
+			message = replaceRequiredWith(message, validTag.params, validator)
+		}
 		return fmt.Errorf(message)
 	}
 
@@ -501,6 +596,11 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 		}
 
 		message = replaceAttributes(message, attribute, validTag.messageParameter)
+
+		if shouldReplaceRequiredWith(validTag.name) {
+			message = replaceRequiredWith(message, validTag.params, nil)
+		}
+
 		return fmt.Errorf(message)
 	}
 
@@ -513,4 +613,43 @@ func replaceAttributes(message string, attribute string, messageParameter messag
 		message = strings.Replace(message, ":"+key, value, -1)
 	}
 	return message
+}
+
+func replaceRequiredWith(message string, attributes []string, validator *Validator) string {
+	first := true
+	var buff bytes.Buffer
+	for _, v := range attributes {
+		if first {
+			first = false
+		} else {
+			buff.WriteByte(' ')
+			buff.WriteByte('/')
+			buff.WriteByte(' ')
+		}
+
+		if validator.Translator != nil {
+			if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][v]; ok {
+				buff.WriteString(customAttribute)
+				continue
+			}
+		}
+
+		if customAttribute, ok := validator.Attributes[v]; ok {
+			buff.WriteString(customAttribute)
+			continue
+		}
+
+		buff.WriteString(v)
+	}
+
+	return strings.Replace(message, ":values", buff.String(), -1)
+}
+
+func shouldReplaceRequiredWith(tag string) bool {
+	switch tag {
+	case "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+		return true
+	default:
+		return false
+	}
 }
