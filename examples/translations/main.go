@@ -5,6 +5,7 @@ import (
 
 	validator "github.com/syssam/go-validator"
 	lang_en "github.com/syssam/go-validator/examples/translations/lang/en"
+	lang_zh_CN "github.com/syssam/go-validator/examples/translations/lang/zh_CN"
 	validator_en "github.com/syssam/go-validator/lang/en"
 	validator_zh_CN "github.com/syssam/go-validator/lang/zh_CN"
 )
@@ -27,13 +28,13 @@ type Address struct {
 }
 
 func main() {
-	validator = validator.New()
-	validator.Translator = validator.NewTranslator()
-	validator.Translator.SetMessage("en", validator_en.MessageMap)
-	validator.Translator.SetMessage("zh_CN", validator_zh_CN.MessageMap)
-	validator.Translator.SetAttributes("en", lang_en.AttributeMap)
-	validator.Translator.SetAttributes("zh_CN", validator_zh_CN.AttributeMap)
-	validator.Translator.SetLocale("zh_CN")
+	validatorInstance := validator.New()
+	validatorInstance.Translator = validator.NewTranslator()
+	validatorInstance.Translator.SetMessage("en", validator_en.MessageMap)
+	validatorInstance.Translator.SetMessage("zh_CN", validator_zh_CN.MessageMap)
+	validatorInstance.Translator.SetAttributes("en", lang_en.AttributeMap)
+	validatorInstance.Translator.SetAttributes("zh_CN", lang_zh_CN.AttributeMap)
+	validatorInstance.Translator.SetLocale("zh_CN")
 
 	address := &Address{
 		Street: "Eavesdown Docks",
@@ -49,7 +50,7 @@ func main() {
 		Addresses: []*Address{address},
 	}
 
-	err := validatorInstance.Struct(user)
+	err := validator.ValidateStruct(user)
 	if err != nil {
 		for _, err := range err.(validator.Errors) {
 			fmt.Println(err)
