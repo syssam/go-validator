@@ -6,7 +6,8 @@ func BenchmarkFieldsRequired(t *testing.B) {
 	model := FieldsRequired{Name: "TEST", Email: "test@example.com"}
 	expected := true
 	for i := 0; i < t.N; i++ {
-		actual, err := ValidateStruct(&model)
+		err := ValidateStruct(&model)
+		actual := err == nil
 		if actual != expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", model, expected, actual)
 			if err != nil {

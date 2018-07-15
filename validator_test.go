@@ -32,10 +32,11 @@ func TestFieldsRequired(t *testing.T) {
 		{FieldsRequired{Name: "TEST", Email: "test@example.com"}, true},
 	}
 	for _, test := range tests {
-		actual, err := ValidateStruct(test.param)
+		err := ValidateStruct(test.param)
+		actual := err != nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
-			if err != nil {
+			if err == nil {
 				t.Errorf("Got Error on validateateStruct(%q): %s", test.param, err)
 			}
 		}
@@ -56,7 +57,8 @@ func TestMultipleFieldsRequired(t *testing.T) {
 		{MultipleFieldsRequired{Url: "TEST", Email: "test@example.com"}, true},
 	}
 	for _, test := range tests {
-		actual, err := ValidateStruct(test.param)
+		err := ValidateStruct(test.param)
+		actual := err != nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
 			if err != nil {
@@ -77,7 +79,8 @@ func TestFieldsEmail(t *testing.T) {
 		{FieldsEmail{Email: "test@example.com"}, true},
 	}
 	for _, test := range tests {
-		actual, err := ValidateStruct(test.param)
+		err := ValidateStruct(test.param)
+		actual := err != nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
 			if err != nil {
