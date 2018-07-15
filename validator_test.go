@@ -6,16 +6,16 @@ import (
 
 type FieldsRequired struct {
 	Name  string ``
-	Email string `validate:"required"`
+	Email string `valid:"required"`
 }
 
 type MultipleFieldsRequired struct {
-	Url   string `validate:"required"`
-	Email string `validate:"required"`
+	Url   string `valid:"required"`
+	Email string `valid:"required"`
 }
 
 type FieldsEmail struct {
-	Email string `validate:"email"`
+	Email string `valid:"email"`
 }
 
 func TestFieldsRequired(t *testing.T) {
@@ -33,7 +33,7 @@ func TestFieldsRequired(t *testing.T) {
 	}
 	for _, test := range tests {
 		err := ValidateStruct(test.param)
-		actual := err != nil
+		actual := err == nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
 			if err == nil {
@@ -58,7 +58,7 @@ func TestMultipleFieldsRequired(t *testing.T) {
 	}
 	for _, test := range tests {
 		err := ValidateStruct(test.param)
-		actual := err != nil
+		actual := err == nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
 			if err != nil {
@@ -80,7 +80,7 @@ func TestFieldsEmail(t *testing.T) {
 	}
 	for _, test := range tests {
 		err := ValidateStruct(test.param)
-		actual := err != nil
+		actual := err == nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
 			if err != nil {
