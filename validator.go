@@ -507,7 +507,12 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 		case "required":
 			result = isEmptyValue(v)
 		case "requiredIf":
-			if len(tag.params) >= 2 && IsRequiredIf(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
+			value := o.FieldByName(tag.params[0])
+			if len(tag.params) >= 2 && IsRequiredIf(v, value, tag.params[1:]...) {
+				if tag.messageParameter == nil {
+					tag.messageParameter = make(messageParameterMap)
+				}
+				tag.messageParameter["value"] = value.String()
 				result = true
 			}
 		case "requiredUnless":
@@ -585,6 +590,9 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 		if shouldReplaceRequiredWith(validTag.name) {
 			message = replaceRequiredWith(message, validTag.params, validator)
 		}
+		if shouldReplaceRequiredIf(validTag.name) {
+			message = replaceRequiredIf(message, o.Type().Name()+"."+validTag.params[0], validator)
+		}
 		return fmt.Errorf(message)
 	}
 
@@ -603,6 +611,10 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 
 		if shouldReplaceRequiredWith(validTag.name) {
 			message = replaceRequiredWith(message, validTag.params, validator)
+		}
+
+		if shouldReplaceRequiredIf(validTag.name) {
+			message = replaceRequiredIf(message, o.Type().Name()+"."+validTag.params[0], validator)
 		}
 
 		return fmt.Errorf(message)
@@ -651,7 +663,30 @@ func replaceRequiredWith(message string, attributes []string, validator *Validat
 
 func shouldReplaceRequiredWith(tag string) bool {
 	switch tag {
-	case "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+		return true
+	default:
+		return false
+	}
+}
+
+func replaceRequiredIf(message string, attribute string, validator *Validator) string {
+	if validator.Translator != nil {
+		if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][attribute]; ok {
+			return strings.Replace(message, ":other", customAttribute, -1)
+		}
+	}
+
+	if customAttribute, ok := validator.Attributes[attribute]; ok {
+		return strings.Replace(message, ":other", customAttribute, -1)
+	}
+
+	return strings.Replace(message, ":other", attribute, -1)
+}
+
+func shouldReplaceRequiredIf(tag string) bool {
+	switch tag {
+	case "requiredIf", "requiredUnless":
 		return true
 	default:
 		return false
