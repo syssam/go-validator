@@ -57,7 +57,65 @@ func TestMultipleFieldsRequired(t *testing.T) {
 		{MultipleFieldsRequired{Url: "TEST", Email: "test@example.com"}, true},
 	}
 	for _, test := range tests {
-		err := ValidateStruct(test.param)
+		err := ValidateStruct(&test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%q): %s", test.param, err)
+			}
+		}
+	}
+}
+
+func TestRequiredIf(t *testing.T) {
+	type RequiredIf struct {
+		First string
+		Last  string `valid:"requiredIf=First|taylor"`
+	}
+
+	var tests = []struct {
+		param    RequiredIf
+		expected bool
+	}{
+		{RequiredIf{}, true},
+		{RequiredIf{First: "", Last: ""}, true},
+		{RequiredIf{First: "TEST"}, true},
+		{RequiredIf{First: "taylor", Last: ""}, false},
+		{RequiredIf{First: "taylor", Last: "otwell"}, true},
+	}
+	for _, test := range tests {
+		err := ValidateStruct(&test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%q): %s", test.param, err)
+			}
+		}
+	}
+}
+
+func TestMultipleRequiredIf(t *testing.T) {
+	type RequiredIf struct {
+		First string
+		Last  string `valid:"requiredIf=First|taylor|dayle"`
+	}
+
+	var tests = []struct {
+		param    RequiredIf
+		expected bool
+	}{
+		{RequiredIf{}, true},
+		{RequiredIf{First: "", Last: ""}, true},
+		{RequiredIf{First: "TEST"}, true},
+		{RequiredIf{First: "taylor", Last: ""}, false},
+		{RequiredIf{First: "dayle", Last: ""}, false},
+		{RequiredIf{First: "taylor", Last: "otwell"}, true},
+		{RequiredIf{First: "dayle", Last: "otwell"}, true},
+	}
+	for _, test := range tests {
+		err := ValidateStruct(&test.param)
 		actual := err == nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)

@@ -38,6 +38,10 @@ func newValidator() *Validator {
 
 // IsRequiredIf check value required when anotherfield str is a member of the set of strings params
 func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+	if !anotherfield.IsValid() {
+		return false
+	}
+
 	switch anotherfield.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
