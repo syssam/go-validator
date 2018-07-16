@@ -602,7 +602,7 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 		message = replaceAttributes(message, attribute, validTag.messageParameter)
 
 		if shouldReplaceRequiredWith(validTag.name) {
-			message = replaceRequiredWith(message, validTag.params, nil)
+			message = replaceRequiredWith(message, validTag.params, validator)
 		}
 
 		return fmt.Errorf(message)
