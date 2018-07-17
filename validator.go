@@ -524,15 +524,15 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 				result = true
 			}
 		case "requiredWithAll":
-			if IsRequiredWith(tag.params, v) {
+			if IsRequiredWithAll(tag.params, v) {
 				result = true
 			}
 		case "requiredWithout":
-			if IsRequiredWith(tag.params, v) {
+			if IsRequiredWithout(tag.params, v) {
 				result = true
 			}
 		case "requiredWithoutAll":
-			if IsRequiredWith(tag.params, v) {
+			if IsRequiredWithoutAll(tag.params, v) {
 				result = true
 			}
 		}
@@ -691,4 +691,16 @@ func shouldReplaceRequiredIf(tag string) bool {
 	default:
 		return false
 	}
+}
+
+func inArray(needle []string, haystack []string) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
 }
