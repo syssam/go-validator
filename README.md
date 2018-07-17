@@ -19,6 +19,11 @@
 <ul>
     <li><a>required</a></li>
     <li><a>requiredIf</a></li>
+    <li><a>requiredUnless - TO DO</a></li>
+    <li><a>requiredWith - TO DO</a></li>
+    <li><a>requiredWithAll - TO DO</a></li>
+    <li><a>requiredWithout - TO DO</a></li>
+    <li><a>requiredWithoutAll - TO DO</a></li>
     <li><a>email</a></li>
     <li><a>between</a></li>
     <li><a>max</a></li>
@@ -39,6 +44,16 @@
 </div>
 <h4 id="rule-requiredIf">requiredIf=anotherfield|value|...</h4>
 <p>The field under validation must be present and not empty if the anotherfield field is equal to any value.</p>
+<h4 id="rule-requiredIf">requiredUnless=anotherfield|value|...</h4>
+<p>The field under validation must be present and not empty unless the anotherfield field is equal to any value.</p>
+<h4 id="rule-requiredIf">requiredWith=anotherfield|anotherfield|...</h4>
+<p>The field under validation must be present and not empty only if any of the other specified fields are present.</p>
+<h4 id="rule-requiredIf">requiredWithAll=anotherfield|anotherfield|...</h4>
+<p>The field under validation must be present and not empty only if all of the other specified fields are present.</p>
+<h4 id="rule-requiredIf">requiredWithout=anotherfield|anotherfield|...</h4>
+<p>The field under validation must be present and not empty only when any of the other specified fields are not present.</p>
+<h4 id="rule-requiredIf">requiredWithoutAll=anotherfield|anotherfield|...</h4>
+<p>The field under validation must be present and not empty only when all of the other specified fields are not present.</p>
 <h4 id="rule-email">email</h4>
 <p>The field under validation must be formatted as an e-mail address.</p>
 <h4 id="rule-between">between=min|max</h4>
