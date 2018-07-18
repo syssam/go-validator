@@ -49,7 +49,7 @@ func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, 
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 
-		if IsIn(anotherfield.String(), params...) {
+		if IsIn(ToString(anotherfield), params...) {
 			if isEmptyValue(v) {
 				if tag != nil {
 					if tag.messageParameter == nil {
