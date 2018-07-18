@@ -37,7 +37,7 @@ func newValidator() *Validator {
 }
 
 // IsRequiredIf check value required when anotherfield str is a member of the set of strings params
-func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
 	if !anotherfield.IsValid() {
 		return false
 	}
@@ -50,7 +50,15 @@ func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params ...string)
 		reflect.String:
 
 		if IsIn(anotherfield.String(), params...) {
-			return isEmptyValue(v)
+			if isEmptyValue(v) {
+				if tag != nil {
+					if tag.messageParameter == nil {
+						tag.messageParameter = make(messageParameterMap)
+					}
+					tag.messageParameter["value"] = anotherfield.String()
+				}
+				return true
+			}
 		}
 
 		return false
@@ -507,12 +515,8 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 		case "required":
 			result = isEmptyValue(v)
 		case "requiredIf":
-			value := o.FieldByName(tag.params[0])
-			if len(tag.params) >= 2 && IsRequiredIf(v, value, tag.params[1:]...) {
-				if tag.messageParameter == nil {
-					tag.messageParameter = make(messageParameterMap)
-				}
-				tag.messageParameter["value"] = value.String()
+			anotherfield := findField(tag.params[0], o)
+			if len(tag.params) >= 2 && IsRequiredIf(v, anotherfield, tag.params[1:], tag) {
 				result = true
 			}
 		case "requiredUnless":
@@ -703,4 +707,26 @@ func inArray(needle []string, haystack []string) bool {
 	}
 
 	return false
+}
+
+func findField(fieldName string, v reflect.Value) reflect.Value {
+	fields := strings.Split(fieldName, ".")
+	current := v.FieldByName(fields[0])
+
+	i := 2
+	if len(fields) > i {
+		for true {
+			if current.Kind() == reflect.Interface || current.Kind() == reflect.Ptr {
+				current = current.Elem()
+			}
+			name := fields[i-1]
+			current = current.FieldByName(name)
+			if i == len(fields) {
+				break
+			}
+			i++
+		}
+	}
+
+	return current
 }
