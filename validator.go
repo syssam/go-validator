@@ -52,14 +52,14 @@ func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, ta
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
-
-		if InString(ToString(anotherfield), params...) {
+		value := ToString(anotherfield)
+		if InString(value, params...) {
 			if Empty(v) {
 				if tag != nil {
 					if tag.messageParameter == nil {
 						tag.messageParameter = make(messageParameterMap)
 					}
-					tag.messageParameter["value"] = anotherfield.String()
+					tag.messageParameter["value"] = value
 				}
 				return false
 			}
@@ -653,7 +653,7 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 			message = replaceRequiredWith(message, validTag.params, validator)
 		}
 		if shouldReplaceRequiredIf(validTag.name) {
-			message = replaceRequiredIf(message, o.Type().Name()+"."+validTag.params[0], validator)
+			message = replaceRequiredIf(message, o, validTag.params[0], validator)
 		}
 		return fmt.Errorf(message)
 	}
@@ -676,7 +676,7 @@ func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Va
 		}
 
 		if shouldReplaceRequiredIf(validTag.name) {
-			message = replaceRequiredIf(message, o.Type().Name()+"."+validTag.params[0], validator)
+			message = replaceRequiredIf(message, o, validTag.params[0], validator)
 		}
 
 		return fmt.Errorf(message)
@@ -732,7 +732,14 @@ func shouldReplaceRequiredWith(tag string) bool {
 	}
 }
 
-func replaceRequiredIf(message string, attribute string, validator *Validator) string {
+func replaceRequiredIf(message string, o reflect.Value, attribute string, validator *Validator) string {
+	attributes := strings.Split(attribute, ".")
+	if len(attributes) > 0 {
+		attribute = o.Type().Name() + attributes[0]
+	} else {
+		attribute = strings.Join(attributes[len(attributes)-2:], ".")
+	}
+
 	if validator.Translator != nil {
 		if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][attribute]; ok {
 			return strings.Replace(message, ":other", customAttribute, -1)
@@ -743,7 +750,7 @@ func replaceRequiredIf(message string, attribute string, validator *Validator) s
 		return strings.Replace(message, ":other", customAttribute, -1)
 	}
 
-	return strings.Replace(message, ":other", attribute, -1)
+	return strings.Replace(message, ":other", attributes[len(attributes)-1], -1)
 }
 
 func shouldReplaceRequiredIf(tag string) bool {

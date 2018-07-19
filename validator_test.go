@@ -69,9 +69,20 @@ func TestMultipleFieldsRequired(t *testing.T) {
 }
 
 func TestRequiredIf(t *testing.T) {
+	type SubTest struct {
+		Test string
+	}
+
 	type RequiredIf struct {
-		First string
-		Last  string `valid:"requiredIf=First|taylor"`
+		String           string `valid:"requiredIf=RequiredIfString|otwell"`
+		RequiredIfString string
+		Bool             string `valid:requiredIf"=RequiredIfBool|true"`
+		RequiredIfBool   bool
+		Number           string `valid:"requiredIf=RequiredIfNumber|888"`
+		RequiredIfNumber int
+		Array            string `valid:"requiredIf=RequiredIfArray|888"`
+		RequiredIfArray  []string
+		SubTest          *SubTest
 	}
 
 	var tests = []struct {
@@ -79,18 +90,25 @@ func TestRequiredIf(t *testing.T) {
 		expected bool
 	}{
 		{RequiredIf{}, true},
-		{RequiredIf{First: "", Last: ""}, true},
-		{RequiredIf{First: "TEST"}, true},
-		{RequiredIf{First: "taylor", Last: ""}, false},
-		{RequiredIf{First: "taylor", Last: "otwell"}, true},
+		{RequiredIf{String: "", RequiredIfString: ""}, true},
+		{RequiredIf{String: "String"}, true},
+		{RequiredIf{RequiredIfString: "otwell"}, false},
+		{RequiredIf{String: "", RequiredIfString: "otwell"}, false},
+		{RequiredIf{String: "String", RequiredIfString: "otwell"}, true},
+		{RequiredIf{Bool: "Bool"}, true},
+		{RequiredIf{Bool: "", RequiredIfBool: false}, true},
+		{RequiredIf{Bool: "", RequiredIfBool: true}, false},
+		{RequiredIf{Number: "Number"}, true},
+		{RequiredIf{Number: "", RequiredIfNumber: 555}, true},
+		{RequiredIf{Number: "", RequiredIfNumber: 888}, false},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		err := ValidateStruct(&test.param)
 		actual := err == nil
 		if actual != test.expected {
-			t.Errorf("Expected validateateStruct(%q) to be %v, got %v", test.param, test.expected, actual)
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
 			if err != nil {
-				t.Errorf("Got Error on validateateStruct(%q): %s", test.param, err)
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
 			}
 		}
 	}
