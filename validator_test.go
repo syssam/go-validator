@@ -76,7 +76,7 @@ func TestRequiredIf(t *testing.T) {
 	type RequiredIf struct {
 		String           string `valid:"requiredIf=RequiredIfString|otwell"`
 		RequiredIfString string
-		Bool             string `valid:requiredIf"=RequiredIfBool|true"`
+		Bool             string `valid:"requiredIf=RequiredIfBool|true"`
 		RequiredIfBool   bool
 		Number           string `valid:"requiredIf=RequiredIfNumber|888"`
 		RequiredIfNumber int
