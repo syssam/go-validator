@@ -10,30 +10,30 @@ func DigitsBetweenFloat64(value, left, right float64) bool {
 
 // MaxFloat64 is the validation function for validating if the current field's value is less than or equal to the param's value.
 func MaxFloat64(v, param float64) bool {
-	return IsLteFloat64(v, param)
+	return LteFloat64(v, param)
 }
 
 // MinFloat64 is the validation function for validating if the current field's value is greater than or equal to the param's value.
 func MinFloat64(v, param float64) bool {
-	return IsGteFloat64(v, param)
+	return GteFloat64(v, param)
 }
 
-// IsLtFloat64 is the validation function for validating if the current field's value is less than the param's value.
-func IsLtFloat64(v, param float64) bool {
+// LtFloat64 is the validation function for validating if the current field's value is less than the param's value.
+func LtFloat64(v, param float64) bool {
 	return v < param
 }
 
-// IsLteFloat64 is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLteFloat64(v, param float64) bool {
+// LteFloat64 is the validation function for validating if the current field's value is less than or equal to the param's value.
+func LteFloat64(v, param float64) bool {
 	return v <= param
 }
 
-// IsGteFloat64 is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsGteFloat64(v, param float64) bool {
+// GteFloat64 is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func GteFloat64(v, param float64) bool {
 	return v >= param
 }
 
-// IsGtFloat64 is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGtFloat64(v, param float64) bool {
+// GtFloat64 is the validation function for validating if the current field's value is greater than to the param's value.
+func GtFloat64(v, param float64) bool {
 	return v > param
 }

@@ -36,14 +36,14 @@ func newValidator() *Validator {
 	return loadValidatorOnce
 }
 
-// IsRequiredIf check value required when anotherfield str is a member of the set of strings params
-func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
+// RequiredIf check value required when anotherfield str is a member of the set of strings params
+func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
 	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
 		anotherfield = anotherfield.Elem()
 	}
 
 	if !anotherfield.IsValid() {
-		return false
+		return true
 	}
 
 	switch anotherfield.Kind() {
@@ -53,33 +53,81 @@ func IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, 
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 
-		if IsIn(ToString(anotherfield), params...) {
-			if isEmptyValue(v) {
+		if InString(ToString(anotherfield), params...) {
+			if Empty(v) {
 				if tag != nil {
 					if tag.messageParameter == nil {
 						tag.messageParameter = make(messageParameterMap)
 					}
 					tag.messageParameter["value"] = anotherfield.String()
 				}
-				return true
+				return false
+			}
+		}
+	case reflect.Map:
+		values := []string{}
+		var sv stringValues
+		sv = anotherfield.MapKeys()
+		sort.Sort(sv)
+		for _, k := range sv {
+			value := v.MapIndex(k)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
 			}
 		}
 
-		return false
-	}
-
-	return false
-}
-
-// IsIn check if string str is a member of the set of strings params
-func IsIn(str string, params ...string) bool {
-	for _, param := range params {
-		if str == param {
-			return true
+		for _, value := range values {
+			if InString(value, params...) {
+				if Empty(v) {
+					if tag != nil {
+						if tag.messageParameter == nil {
+							tag.messageParameter = make(messageParameterMap)
+						}
+						tag.messageParameter["value"] = value
+					}
+					return false
+				}
+			}
 		}
+	case reflect.Slice, reflect.Array:
+		values := []string{}
+		for i := 0; i < v.Len(); i++ {
+			value := v.Index(i)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+			}
+		}
+
+		for _, value := range values {
+			if InString(value, params...) {
+				if Empty(v) {
+					if tag != nil {
+						if tag.messageParameter == nil {
+							tag.messageParameter = make(messageParameterMap)
+						}
+						tag.messageParameter["value"] = value
+					}
+					return false
+				}
+			}
+		}
+	default:
+		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
 	}
 
-	return false
+	return true
 }
 
 // IsEmail check if the string is an email.
@@ -148,104 +196,104 @@ func IsNull(str string) bool {
 
 // Max is the validation function for validating if the current field's value is less than or equal to the param's value.
 func Max(v reflect.Value, param ...string) bool {
-	return IsLte(v, param[0])
+	return Lte(v, param[0])
 }
 
 // Min is the validation function for validating if the current field's value is greater than or equal to the param's value.
 func Min(v reflect.Value, param ...string) bool {
-	return IsGte(v, param[0])
+	return Gte(v, param[0])
 }
 
-// IsLt is the validation function for validating if the current field's value is less than the param's value.
-func IsLt(v reflect.Value, param ...string) bool {
+// Lt is the validation function for validating if the current field's value is less than the param's value.
+func Lt(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
-		return IsLtString(v.String(), p)
+		return LtString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
 		p, _ := ToInt(param[0])
 		return int64(v.Len()) < p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		p, _ := ToInt(param[0])
-		return IsLtInt64(v.Int(), p)
+		return LtInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return IsLtUnit64(v.Uint(), p)
+		return LtUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
-		return IsLtFloat64(v.Float(), p)
+		return LtFloat64(v.Float(), p)
 	}
 
-	panic(fmt.Sprintf("validator: IsLt unsupport Type %T", v.Interface()))
+	panic(fmt.Sprintf("validator: Lt unsupport Type %T", v.Interface()))
 }
 
-// IsLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLte(v reflect.Value, param ...string) bool {
+// Lte is the validation function for validating if the current field's value is less than or equal to the param's value.
+func Lte(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
-		return IsLteString(v.String(), p)
+		return LteString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
 		p, _ := ToInt(param[0])
 		return int64(v.Len()) <= p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		p, _ := ToInt(param[0])
-		return IsLteInt64(v.Int(), p)
+		return LteInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return IsLteUnit64(v.Uint(), p)
+		return LteUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
-		return IsLteFloat64(v.Float(), p)
+		return LteFloat64(v.Float(), p)
 	}
 
-	panic(fmt.Sprintf("validator: IsLte unsupport Type %T", v.Interface()))
+	panic(fmt.Sprintf("validator: Lte unsupport Type %T", v.Interface()))
 }
 
-// IsGte is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsGte(v reflect.Value, param ...string) bool {
+// Gte is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func Gte(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
-		return IsGteString(v.String(), p)
+		return GteString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
 		p, _ := ToInt(param[0])
 		return int64(v.Len()) >= p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		p, _ := ToInt(param[0])
-		return IsGteInt64(v.Int(), p)
+		return GteInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return IsGteUnit64(v.Uint(), p)
+		return GteUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
-		return IsGteFloat64(v.Float(), p)
+		return GteFloat64(v.Float(), p)
 	}
 
-	panic(fmt.Sprintf("validator: IsGte unsupport Type %T", v.Interface()))
+	panic(fmt.Sprintf("validator: Gte unsupport Type %T", v.Interface()))
 }
 
-// IsGt is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGt(v reflect.Value, param ...string) bool {
+// Gt is the validation function for validating if the current field's value is greater than to the param's value.
+func Gt(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
-		return IsGtString(v.String(), p)
+		return GtString(v.String(), p)
 	case reflect.Slice, reflect.Map, reflect.Array:
 		p, _ := ToInt(param[0])
 		return int64(v.Len()) > p
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		p, _ := ToInt(param[0])
-		return IsGtInt64(v.Int(), p)
+		return GtInt64(v.Int(), p)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return IsGtUnit64(v.Uint(), p)
+		return GtUnit64(v.Uint(), p)
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
-		return IsGtFloat64(v.Float(), p)
+		return GtFloat64(v.Float(), p)
 	}
 
-	panic(fmt.Sprintf("validator: IsGt unsupport Type %T", v.Interface()))
+	panic(fmt.Sprintf("validator: Gt unsupport Type %T", v.Interface()))
 }
 
 func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
@@ -444,7 +492,8 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 	}
 }
 
-func isEmptyValue(v reflect.Value) bool {
+// Empty determine whether a variable is empty
+func Empty(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.String, reflect.Array:
 		return v.Len() == 0
@@ -475,8 +524,13 @@ func (sv stringValues) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
-// IsRequiredUnless check value required when anotherfield str is a member of the set of strings params
-func IsRequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+// Required check value required when anotherfield str is a member of the set of strings params
+func Required(v reflect.Value) bool {
+	return !Empty(v)
+}
+
+// RequiredUnless check value required when anotherfield str is a member of the set of strings params
+func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
 	switch anotherfield.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -484,8 +538,8 @@ func IsRequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...str
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 
-		if !IsIn(anotherfield.String(), params...) {
-			return isEmptyValue(v)
+		if !InString(anotherfield.String(), params...) {
+			return Empty(v)
 		}
 
 		return false
@@ -496,7 +550,7 @@ func IsRequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...str
 
 func allFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		if isEmptyValue(v.FieldByName(p)) {
+		if Empty(v.FieldByName(p)) {
 			return false
 		}
 	}
@@ -505,7 +559,7 @@ func allFailingRequired(parameters []string, v reflect.Value) bool {
 
 func anyFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		if isEmptyValue(v.FieldByName(p)) {
+		if Empty(v.FieldByName(p)) {
 			return true
 		}
 	}
@@ -514,38 +568,38 @@ func anyFailingRequired(parameters []string, v reflect.Value) bool {
 
 func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, structName string) error {
 	for _, tag := range f.requiredTags {
-		result := false
+		isError := false
 		switch tag.name {
 		case "required":
-			result = isEmptyValue(v)
+			isError = !Required(v)
 		case "requiredIf":
 			anotherfield := findField(tag.params[0], o)
-			if len(tag.params) >= 2 && IsRequiredIf(v, anotherfield, tag.params[1:], tag) {
-				result = true
+			if len(tag.params) >= 2 && !RequiredIf(v, anotherfield, tag.params[1:], tag) {
+				isError = true
 			}
 		case "requiredUnless":
-			if len(tag.params) >= 2 && IsRequiredUnless(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
-				result = true
+			if len(tag.params) >= 2 && RequiredUnless(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
+				isError = true
 			}
 		case "requiredWith":
-			if IsRequiredWith(tag.params, v) {
-				result = true
+			if RequiredWith(tag.params, v) {
+				isError = true
 			}
 		case "requiredWithAll":
-			if IsRequiredWithAll(tag.params, v) {
-				result = true
+			if RequiredWithAll(tag.params, v) {
+				isError = true
 			}
 		case "requiredWithout":
-			if IsRequiredWithout(tag.params, v) {
-				result = true
+			if RequiredWithout(tag.params, v) {
+				isError = true
 			}
 		case "requiredWithoutAll":
-			if IsRequiredWithoutAll(tag.params, v) {
-				result = true
+			if RequiredWithoutAll(tag.params, v) {
+				isError = true
 			}
 		}
 
-		if result {
+		if isError {
 			return &Error{
 				Name:       name,
 				StructName: structName,
@@ -558,34 +612,34 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 	return nil
 }
 
-// IsRequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
-func IsRequiredWith(otherFields []string, v reflect.Value) bool {
+// RequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
+func RequiredWith(otherFields []string, v reflect.Value) bool {
 	if !allFailingRequired(otherFields, v) {
-		return isEmptyValue(v)
+		return Empty(v)
 	}
 	return false
 }
 
-// IsRequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
-func IsRequiredWithAll(otherFields []string, v reflect.Value) bool {
+// RequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
+func RequiredWithAll(otherFields []string, v reflect.Value) bool {
 	if !anyFailingRequired(otherFields, v) {
-		return isEmptyValue(v)
+		return Empty(v)
 	}
 	return false
 }
 
-// IsRequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
-func IsRequiredWithout(otherFields []string, v reflect.Value) bool {
+// RequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
+func RequiredWithout(otherFields []string, v reflect.Value) bool {
 	if anyFailingRequired(otherFields, v) {
-		return isEmptyValue(v)
+		return Empty(v)
 	}
 	return false
 }
 
-// IsRequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
-func IsRequiredWithoutAll(otherFields []string, v reflect.Value) bool {
+// RequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
+func RequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 	if allFailingRequired(otherFields, v) {
-		return isEmptyValue(v)
+		return Empty(v)
 	}
 	return false
 }
