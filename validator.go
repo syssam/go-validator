@@ -36,100 +36,6 @@ func newValidator() *Validator {
 	return loadValidatorOnce
 }
 
-// RequiredIf check value required when anotherfield str is a member of the set of strings params
-func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
-	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
-		anotherfield = anotherfield.Elem()
-	}
-
-	if !anotherfield.IsValid() {
-		return true
-	}
-
-	switch anotherfield.Kind() {
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
-		reflect.Float32, reflect.Float64,
-		reflect.String:
-		value := ToString(anotherfield)
-		if InString(value, params...) {
-			if Empty(v) {
-				if tag != nil {
-					if tag.messageParameter == nil {
-						tag.messageParameter = make(messageParameterMap)
-					}
-					tag.messageParameter["value"] = value
-				}
-				return false
-			}
-		}
-	case reflect.Map:
-		values := []string{}
-		var sv stringValues
-		sv = anotherfield.MapKeys()
-		sort.Sort(sv)
-		for _, k := range sv {
-			value := v.MapIndex(k)
-			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
-				value = value.Elem()
-			}
-
-			if value.Kind() != reflect.Struct {
-				values = append(values, ToString(value.Interface()))
-			} else {
-				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
-			}
-		}
-
-		for _, value := range values {
-			if InString(value, params...) {
-				if Empty(v) {
-					if tag != nil {
-						if tag.messageParameter == nil {
-							tag.messageParameter = make(messageParameterMap)
-						}
-						tag.messageParameter["value"] = value
-					}
-					return false
-				}
-			}
-		}
-	case reflect.Slice, reflect.Array:
-		values := []string{}
-		for i := 0; i < v.Len(); i++ {
-			value := v.Index(i)
-			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
-				value = value.Elem()
-			}
-
-			if value.Kind() != reflect.Struct {
-				values = append(values, ToString(value.Interface()))
-			} else {
-				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
-			}
-		}
-
-		for _, value := range values {
-			if InString(value, params...) {
-				if Empty(v) {
-					if tag != nil {
-						if tag.messageParameter == nil {
-							tag.messageParameter = make(messageParameterMap)
-						}
-						tag.messageParameter["value"] = value
-					}
-					return false
-				}
-			}
-		}
-	default:
-		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
-	}
-
-	return true
-}
-
 // IsEmail check if the string is an email.
 func IsEmail(str string) bool {
 	// TODO uppercase letters are not supported
@@ -529,23 +435,174 @@ func Required(v reflect.Value) bool {
 	return !Empty(v)
 }
 
-// RequiredUnless check value required when anotherfield str is a member of the set of strings params
-func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+// RequiredIf check value required when anotherfield str is a member of the set of strings params
+func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
+	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
+		anotherfield = anotherfield.Elem()
+	}
+
+	if !anotherfield.IsValid() {
+		return true
+	}
+
 	switch anotherfield.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
+		value := ToString(anotherfield)
+		if InString(value, params...) {
+			if Empty(v) {
+				if tag != nil {
+					if tag.messageParameter == nil {
+						tag.messageParameter = make(messageParameterMap)
+					}
+					tag.messageParameter["value"] = value
+				}
+				return false
+			}
+		}
+	case reflect.Map:
+		values := []string{}
+		var sv stringValues
+		sv = anotherfield.MapKeys()
+		sort.Sort(sv)
+		for _, k := range sv {
+			value := v.MapIndex(k)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
 
-		if !InString(anotherfield.String(), params...) {
-			return Empty(v)
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+			}
 		}
 
-		return false
+		for _, value := range values {
+			if InString(value, params...) {
+				if Empty(v) {
+					if tag != nil {
+						if tag.messageParameter == nil {
+							tag.messageParameter = make(messageParameterMap)
+						}
+						tag.messageParameter["value"] = value
+					}
+					return false
+				}
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		values := []string{}
+		for i := 0; i < v.Len(); i++ {
+			value := v.Index(i)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+			}
+		}
+
+		for _, value := range values {
+			if InString(value, params...) {
+				if Empty(v) {
+					if tag != nil {
+						if tag.messageParameter == nil {
+							tag.messageParameter = make(messageParameterMap)
+						}
+						tag.messageParameter["value"] = value
+					}
+					return false
+				}
+			}
+		}
+	default:
+		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
 	}
 
-	return false
+	return true
+}
+
+// RequiredUnless check value required when anotherfield str is a member of the set of strings params
+func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
+	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
+		anotherfield = anotherfield.Elem()
+	}
+
+	if !anotherfield.IsValid() {
+		return true
+	}
+
+	switch anotherfield.Kind() {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64,
+		reflect.String:
+		value := ToString(anotherfield)
+		if InString(value, params...) {
+			if !Empty(v) {
+				return false
+			}
+		}
+	case reflect.Map:
+		values := []string{}
+		var sv stringValues
+		sv = anotherfield.MapKeys()
+		sort.Sort(sv)
+		for _, k := range sv {
+			value := v.MapIndex(k)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+			}
+		}
+
+		for _, value := range values {
+			if InString(value, params...) {
+				if !Empty(v) {
+					return false
+				}
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		values := []string{}
+		for i := 0; i < v.Len(); i++ {
+			value := v.Index(i)
+			if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+				value = value.Elem()
+			}
+
+			if value.Kind() != reflect.Struct {
+				values = append(values, ToString(value.Interface()))
+			} else {
+				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+			}
+		}
+
+		for _, value := range values {
+			if InString(value, params...) {
+				if !Empty(v) {
+					return false
+				}
+			}
+		}
+	default:
+		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
+	}
+
+	return true
 }
 
 func allFailingRequired(parameters []string, v reflect.Value) bool {
@@ -578,7 +635,8 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 				isError = true
 			}
 		case "requiredUnless":
-			if len(tag.params) >= 2 && RequiredUnless(v, o.FieldByName(tag.params[0]), tag.params[1:]...) {
+			anotherfield, err := findField(tag.params[0], o)
+			if err == nil && len(tag.params) >= 2 && RequiredUnless(v, anotherfield, tag.params[1:]...) {
 				isError = true
 			}
 		case "requiredWith":

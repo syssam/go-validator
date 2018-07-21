@@ -255,6 +255,13 @@ type messageParameterMap map[string]string
 
 func parseMessageParameterIntoMap(rule string, params ...string) messageParameterMap {
 	switch rule {
+	case "requiredUnless":
+		if len(params) != 1 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"values": params[0],
+		}
 	case "between", "digitsBetween":
 		if len(params) != 2 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))

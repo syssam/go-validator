@@ -19,7 +19,7 @@
 <ul>
     <li><a>required</a></li>
     <li><a>requiredIf</a></li>
-    <li><a>requiredUnless - TO DO</a></li>
+    <li><a>requiredUnless</a></li>
     <li><a>requiredWith - TO DO</a></li>
     <li><a>requiredWithAll - TO DO</a></li>
     <li><a>requiredWithout - TO DO</a></li>
