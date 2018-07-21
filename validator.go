@@ -573,8 +573,8 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 		case "required":
 			isError = !Required(v)
 		case "requiredIf":
-			anotherfield := findField(tag.params[0], o)
-			if len(tag.params) >= 2 && !RequiredIf(v, anotherfield, tag.params[1:], tag) {
+			anotherfield, err := findField(tag.params[0], o)
+			if err == nil && len(tag.params) >= 2 && !RequiredIf(v, anotherfield, tag.params[1:], tag) {
 				isError = true
 			}
 		case "requiredUnless":
@@ -774,24 +774,28 @@ func inArray(needle []string, haystack []string) bool {
 	return false
 }
 
-func findField(fieldName string, v reflect.Value) reflect.Value {
+func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 	fields := strings.Split(fieldName, ".")
 	current := v.FieldByName(fields[0])
-
-	i := 2
+	i := 1
 	if len(fields) > i {
 		for true {
 			if current.Kind() == reflect.Interface || current.Kind() == reflect.Ptr {
 				current = current.Elem()
 			}
-			name := fields[i-1]
+
+			if !current.IsValid() {
+				return current, fmt.Errorf("validator: findField Struct is nil")
+			}
+
+			name := fields[i]
 			current = current.FieldByName(name)
-			if i == len(fields) {
+			if i == len(fields)-1 {
 				break
 			}
 			i++
 		}
 	}
 
-	return current
+	return current, nil
 }

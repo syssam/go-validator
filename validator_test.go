@@ -82,9 +82,9 @@ func TestRequiredIf(t *testing.T) {
 		RequiredIfNumber int
 		Array            string `valid:"requiredIf=RequiredIfArray|888"`
 		RequiredIfArray  []string
-		SubTest          *SubTest
+		SubTest          string `valid:"requiredIf=RequiredIfSub.Test|otwell"`
+		RequiredIfSub    *SubTest
 	}
-
 	var tests = []struct {
 		param    RequiredIf
 		expected bool
@@ -101,6 +101,9 @@ func TestRequiredIf(t *testing.T) {
 		{RequiredIf{Number: "Number"}, true},
 		{RequiredIf{Number: "", RequiredIfNumber: 555}, true},
 		{RequiredIf{Number: "", RequiredIfNumber: 888}, false},
+		{RequiredIf{SubTest: "SubTest"}, true},
+		{RequiredIf{SubTest: "", RequiredIfSub: &SubTest{Test: "aaa"}}, true},
+		{RequiredIf{SubTest: "", RequiredIfSub: &SubTest{Test: "otwell"}}, false},
 	}
 	for i, test := range tests {
 		err := ValidateStruct(&test.param)
