@@ -605,19 +605,21 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 	return true
 }
 
+// allFailingRequired validate that an attribute exists when all other attributes do not.
 func allFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
 		anotherfield, err := findField(p, v)
 		if err != nil {
-			return false
+			continue
 		}
-		if Empty(anotherfield) {
+		if !Empty(anotherfield) {
 			return false
 		}
 	}
-	return false
+	return true
 }
 
+// anyFailingRequired determine if any of the given attributes fail the required test.
 func anyFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
 		anotherfield, err := findField(p, v)
@@ -648,19 +650,19 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 				isError = true
 			}
 		case "requiredWith":
-			if RequiredWith(tag.params, v) {
+			if !RequiredWith(tag.params, v) {
 				isError = true
 			}
 		case "requiredWithAll":
-			if RequiredWithAll(tag.params, v) {
+			if !RequiredWithAll(tag.params, v) {
 				isError = true
 			}
 		case "requiredWithout":
-			if RequiredWithout(tag.params, v) {
+			if !RequiredWithout(tag.params, v) {
 				isError = true
 			}
 		case "requiredWithoutAll":
-			if RequiredWithoutAll(tag.params, v) {
+			if !RequiredWithoutAll(tag.params, v) {
 				isError = true
 			}
 		}
@@ -681,33 +683,33 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 // RequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
 func RequiredWith(otherFields []string, v reflect.Value) bool {
 	if !allFailingRequired(otherFields, v) {
-		return Empty(v)
+		return Required(v)
 	}
-	return false
+	return true
 }
 
 // RequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
 func RequiredWithAll(otherFields []string, v reflect.Value) bool {
 	if !anyFailingRequired(otherFields, v) {
-		return Empty(v)
+		return Required(v)
 	}
-	return false
+	return true
 }
 
 // RequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
 func RequiredWithout(otherFields []string, v reflect.Value) bool {
 	if anyFailingRequired(otherFields, v) {
-		return Empty(v)
+		return Required(v)
 	}
-	return false
+	return true
 }
 
 // RequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
 func RequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 	if allFailingRequired(otherFields, v) {
-		return Empty(v)
+		return Required(v)
 	}
-	return false
+	return true
 }
 
 func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Value) error {
