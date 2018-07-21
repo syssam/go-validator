@@ -152,40 +152,52 @@ func TestRequiredUnless(t *testing.T) {
 		Test string
 	}
 
-	type RequiredUnless struct {
-		String               string `valid:"RequiredUnless=RequiredUnlessString|otwell"`
-		RequiredUnlessString string
-		Bool                 string `valid:"RequiredUnless=RequiredUnlessBool|true"`
-		RequiredUnlessBool   bool
-		Number               string `valid:"RequiredUnless=RequiredUnlessNumber|888"`
-		RequiredUnlessNumber int
-		Array                string `valid:"RequiredUnless=RequiredUnlessArray|888"`
-		RequiredUnlessArray  []string
-		SubTest              string `valid:"RequiredUnless=RequiredUnlessSub.Test|otwell"`
-		RequiredUnlessSub    *SubTest
+	type RequiredUnlessString struct {
+		First string `valid:"requiredUnless=Last|otwell"`
+		Last  string
 	}
+
+	type RequiredUnlessBool struct {
+		First string `valid:"requiredUnless=Last|true"`
+		Last  bool
+	}
+
+	type RequiredUnlessNumber struct {
+		First string `valid:"requiredUnless=Last|888"`
+		Last  int
+	}
+
+	type RequiredUnlessSub struct {
+		First string `valid:"requiredUnless=Last.Test|otwell"`
+		Last  *SubTest
+	}
+
 	var tests = []struct {
-		param    RequiredUnless
+		param    interface{}
 		expected bool
 	}{
-		{RequiredUnless{}, true},
-		{RequiredUnless{String: "", RequiredUnlessString: ""}, true},
-		{RequiredUnless{String: "String"}, true},
-		{RequiredUnless{RequiredUnlessString: "otwell"}, false},
-		{RequiredUnless{String: "", RequiredUnlessString: "otwell"}, false},
-		{RequiredUnless{String: "String", RequiredUnlessString: "otwell"}, true},
-		{RequiredUnless{Bool: "Bool"}, true},
-		{RequiredUnless{Bool: "", RequiredUnlessBool: false}, true},
-		{RequiredUnless{Bool: "", RequiredUnlessBool: true}, false},
-		{RequiredUnless{Number: "Number"}, true},
-		{RequiredUnless{Number: "", RequiredUnlessNumber: 555}, true},
-		{RequiredUnless{Number: "", RequiredUnlessNumber: 888}, false},
-		{RequiredUnless{SubTest: "SubTest"}, true},
-		{RequiredUnless{SubTest: "", RequiredUnlessSub: &SubTest{Test: "aaa"}}, true},
-		{RequiredUnless{SubTest: "", RequiredUnlessSub: &SubTest{Test: "otwell"}}, false},
+		{RequiredUnlessString{}, false},
+		{RequiredUnlessString{Last: "aa"}, false},
+		{RequiredUnlessString{Last: "otwell"}, true},
+		{RequiredUnlessBool{Last: false}, false},
+		{RequiredUnlessBool{Last: true}, true},
+		{RequiredUnlessNumber{Last: 555}, false},
+		{RequiredUnlessNumber{Last: 888}, true},
+		{RequiredUnlessSub{Last: &SubTest{Test: "test"}}, false},
+		{RequiredUnlessSub{Last: &SubTest{Test: "otwell"}}, true},
 	}
 	for i, test := range tests {
-		err := ValidateStruct(&test.param)
+		var err error
+		switch test.param.(type) {
+		case RequiredUnlessString:
+			err = ValidateStruct(test.param.(RequiredUnlessString))
+		case RequiredUnlessBool:
+			err = ValidateStruct(test.param.(RequiredUnlessBool))
+		case RequiredUnlessNumber:
+			err = ValidateStruct(test.param.(RequiredUnlessNumber))
+		case RequiredUnlessSub:
+			err = ValidateStruct(test.param.(RequiredUnlessSub))
+		}
 		actual := err == nil
 		if actual != test.expected {
 			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)

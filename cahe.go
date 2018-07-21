@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -256,12 +257,28 @@ type messageParameterMap map[string]string
 func parseMessageParameterIntoMap(rule string, params ...string) messageParameterMap {
 	switch rule {
 	case "requiredUnless":
-		if len(params) != 1 {
+		if len(params) < 2 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"values": params[0],
+
+		first := true
+		var buff bytes.Buffer
+		for _, v := range params[1:] {
+			if first {
+				first = false
+			} else {
+				buff.WriteByte(' ')
+				buff.WriteByte(',')
+				buff.WriteByte(' ')
+			}
+
+			buff.WriteString(v)
 		}
+
+		return messageParameterMap{
+			"values": buff.String(),
+		}
+
 	case "between", "digitsBetween":
 		if len(params) != 2 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))

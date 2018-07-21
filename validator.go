@@ -546,8 +546,8 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherfield)
-		if InString(value, params...) {
-			if !Empty(v) {
+		if !InString(value, params...) {
+			if Empty(v) {
 				return false
 			}
 		}
@@ -565,13 +565,13 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 			if value.Kind() != reflect.Struct {
 				values = append(values, ToString(value.Interface()))
 			} else {
-				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+				panic(fmt.Sprintf("validator: requiredUnless unsupport Type %T", value.Interface()))
 			}
 		}
 
 		for _, value := range values {
-			if InString(value, params...) {
-				if !Empty(v) {
+			if !InString(value, params...) {
+				if Empty(v) {
 					return false
 				}
 			}
@@ -587,19 +587,19 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 			if value.Kind() != reflect.Struct {
 				values = append(values, ToString(value.Interface()))
 			} else {
-				panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", value.Interface()))
+				panic(fmt.Sprintf("validator: requiredUnless unsupport Type %T", value.Interface()))
 			}
 		}
 
 		for _, value := range values {
-			if InString(value, params...) {
-				if !Empty(v) {
+			if !InString(value, params...) {
+				if Empty(v) {
 					return false
 				}
 			}
 		}
 	default:
-		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
+		panic(fmt.Sprintf("validator: requiredUnless unsupport Type %T", anotherfield.Interface()))
 	}
 
 	return true
@@ -636,7 +636,7 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 			}
 		case "requiredUnless":
 			anotherfield, err := findField(tag.params[0], o)
-			if err == nil && len(tag.params) >= 2 && RequiredUnless(v, anotherfield, tag.params[1:]...) {
+			if err == nil && len(tag.params) >= 2 && !RequiredUnless(v, anotherfield, tag.params[1:]...) {
 				isError = true
 			}
 		case "requiredWith":
