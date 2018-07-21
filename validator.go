@@ -607,7 +607,11 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 
 func allFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		if Empty(v.FieldByName(p)) {
+		anotherfield, err := findField(p, v)
+		if err != nil {
+			return false
+		}
+		if Empty(anotherfield) {
 			return false
 		}
 	}
@@ -616,7 +620,11 @@ func allFailingRequired(parameters []string, v reflect.Value) bool {
 
 func anyFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		if Empty(v.FieldByName(p)) {
+		anotherfield, err := findField(p, v)
+		if err != nil {
+			return true
+		}
+		if Empty(anotherfield) {
 			return true
 		}
 	}
