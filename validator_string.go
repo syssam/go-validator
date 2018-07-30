@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"fmt"
 	"unicode/utf8"
 )
 
@@ -48,4 +49,22 @@ func InString(str string, params ...string) bool {
 	}
 
 	return false
+}
+
+//  compareString determine if a comparison passes between the given values.
+func compareString(first string, second int64, operator string) bool {
+	switch operator {
+	case "<":
+		return int64(utf8.RuneCountInString(first)) < second
+	case ">":
+		return int64(utf8.RuneCountInString(first)) > second
+	case "<=":
+		return int64(utf8.RuneCountInString(first)) <= second
+	case ">=":
+		return int64(utf8.RuneCountInString(first)) >= second
+	case "==":
+		return int64(utf8.RuneCountInString(first)) == second
+	default:
+		panic(fmt.Sprintf("validator: compareString unsupport operator %s", operator))
+	}
 }

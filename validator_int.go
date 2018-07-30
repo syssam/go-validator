@@ -1,5 +1,7 @@
 package validator
 
+import "fmt"
+
 // DigitsBetweenInt64 returns true if value lies between left and right border
 func DigitsBetweenInt64(value, left, right int64) bool {
 	if left > right {
@@ -36,4 +38,22 @@ func GteInt64(v, param int64) bool {
 // GtInt64 is the validation function for validating if the current field's value is greater than to the param's value.
 func GtInt64(v, param int64) bool {
 	return v > param
+}
+
+//  compareInt64 determine if a comparison passes between the given values.
+func compareInt64(first int64, second int64, operator string) bool {
+	switch operator {
+	case "<":
+		return first < second
+	case ">":
+		return first > second
+	case "<=":
+		return first <= second
+	case ">=":
+		return first >= second
+	case "==":
+		return first == second
+	default:
+		panic(fmt.Sprintf("validator: compareInt64 unsupport operator %s", operator))
+	}
 }

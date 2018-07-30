@@ -11,6 +11,7 @@ import (
 
 const tagName string = "valid"
 
+// Validator contruct
 type Validator struct {
 	Translator    *Translator
 	Attributes    map[string]string
@@ -102,12 +103,48 @@ func IsNull(str string) bool {
 
 // Max is the validation function for validating if the current field's value is less than or equal to the param's value.
 func Max(v reflect.Value, param ...string) bool {
-	return Lte(v, param[0])
+	switch v.Kind() {
+	case reflect.String:
+		p, _ := ToInt(param[0])
+		return compareString(v.String(), p, "<=")
+	case reflect.Slice, reflect.Map, reflect.Array:
+		p, _ := ToInt(param[0])
+		return compareInt64(int64(v.Len()), p, "<=")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		p, _ := ToInt(param[0])
+		return compareInt64(v.Int(), p, "<=")
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		p, _ := ToUint(param[0])
+		return compareUnit64(v.Uint(), p, "<=")
+	case reflect.Float32, reflect.Float64:
+		p, _ := ToFloat(param[0])
+		return compareFloat64(v.Float(), p, "<=")
+	}
+
+	panic(fmt.Sprintf("validator: Max unsupport Type %T", v.Interface()))
 }
 
 // Min is the validation function for validating if the current field's value is greater than or equal to the param's value.
 func Min(v reflect.Value, param ...string) bool {
-	return Gte(v, param[0])
+	switch v.Kind() {
+	case reflect.String:
+		p, _ := ToInt(param[0])
+		return compareString(v.String(), p, ">=")
+	case reflect.Slice, reflect.Map, reflect.Array:
+		p, _ := ToInt(param[0])
+		return compareInt64(int64(v.Len()), p, ">=")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		p, _ := ToInt(param[0])
+		return compareInt64(v.Int(), p, ">=")
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		p, _ := ToUint(param[0])
+		return compareUnit64(v.Uint(), p, ">=")
+	case reflect.Float32, reflect.Float64:
+		p, _ := ToFloat(param[0])
+		return compareFloat64(v.Float(), p, ">=")
+	}
+
+	panic(fmt.Sprintf("validator: Min unsupport Type %T", v.Interface()))
 }
 
 // Lt is the validation function for validating if the current field's value is less than the param's value.

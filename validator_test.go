@@ -10,7 +10,7 @@ type FieldsRequired struct {
 }
 
 type MultipleFieldsRequired struct {
-	Url   string `valid:"required"`
+	URL   string `valid:"required"`
 	Email string `valid:"required"`
 }
 
@@ -49,12 +49,12 @@ func TestMultipleFieldsRequired(t *testing.T) {
 		expected bool
 	}{
 		{MultipleFieldsRequired{}, false},
-		{MultipleFieldsRequired{Url: "", Email: ""}, false},
-		{MultipleFieldsRequired{Url: "TEST"}, false},
-		{MultipleFieldsRequired{Url: "TEST", Email: ""}, false},
+		{MultipleFieldsRequired{URL: "", Email: ""}, false},
+		{MultipleFieldsRequired{URL: "TEST"}, false},
+		{MultipleFieldsRequired{URL: "TEST", Email: ""}, false},
 		{MultipleFieldsRequired{Email: "test@example.com"}, false},
-		{MultipleFieldsRequired{Url: "", Email: "test@example.com"}, false},
-		{MultipleFieldsRequired{Url: "TEST", Email: "test@example.com"}, true},
+		{MultipleFieldsRequired{URL: "", Email: "test@example.com"}, false},
+		{MultipleFieldsRequired{URL: "TEST", Email: "test@example.com"}, true},
 	}
 	for _, test := range tests {
 		err := ValidateStruct(&test.param)
