@@ -292,6 +292,10 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		return err
 	}
 
+	if Empty(v) {
+		return nil
+	}
+
 	for _, tag := range f.validTags {
 		if validatefunc, ok := CustomTypeRuleMap.Get(tag.name); ok {
 			if result := validatefunc(v, o, tag); !result {
@@ -304,7 +308,6 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 		}
 	}
-
 	switch v.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,

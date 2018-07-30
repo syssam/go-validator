@@ -208,6 +208,57 @@ func TestRequiredUnless(t *testing.T) {
 	}
 }
 
+func TestMin(t *testing.T) {
+	type TestMinStruct struct {
+		String string            `valid:"min=5"`
+		Int    int               `valid:"min=5"`
+		Unit   uint              `valid:"min=5"`
+		Float  float64           `valid:"min=5.3"`
+		Array  []string          `valid:"min=5"`
+		Map    map[string]string `valid:"min=5"`
+	}
+	var tests = []struct {
+		param    TestMinStruct
+		expected bool
+	}{
+		{TestMinStruct{}, true},
+		{TestMinStruct{String: "Hell"}, false},
+		{TestMinStruct{String: "Hello"}, true},
+		{TestMinStruct{Int: 4}, false},
+		{TestMinStruct{Int: 5}, true},
+		{TestMinStruct{Unit: 4}, false},
+		{TestMinStruct{Unit: 5}, true},
+		{TestMinStruct{Float: 5.2}, false},
+		{TestMinStruct{Float: 5.9}, true},
+		{TestMinStruct{Array: []string{"1", "2", "3", "4"}}, false},
+		{TestMinStruct{Array: []string{"1", "2", "3", "4", "5"}}, true},
+		{TestMinStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+		}}, false},
+		{TestMinStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+			"tt":  "string",
+		}}, true},
+	}
+
+	for i, test := range tests {
+		err := ValidateStruct(test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
+			}
+		}
+	}
+}
+
 func TestFieldsEmail(t *testing.T) {
 	var tests = []struct {
 		param    FieldsEmail
