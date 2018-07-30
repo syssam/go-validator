@@ -26,14 +26,14 @@ type StringValidateFunc func(str string) bool
 // StringParamValidateFunc is
 type StringParamValidateFunc func(str string, params ...string) bool
 
-type CustomTypeValidateFunc func(v reflect.Value, f *field, o reflect.Value) bool
+type CustomTypeValidateFunc func(v reflect.Value, o reflect.Value, validTag *ValidTag) bool
 
 type customTypeRuleMap struct {
 	validateFunc map[string]CustomTypeValidateFunc
 	sync.RWMutex
 }
 
-var CustomTypeTagMap = &customTypeRuleMap{validateFunc: make(map[string]CustomTypeValidateFunc)}
+var CustomTypeRuleMap = &customTypeRuleMap{validateFunc: make(map[string]CustomTypeValidateFunc)}
 
 func (tm *customTypeRuleMap) Get(name string) (CustomTypeValidateFunc, bool) {
 	tm.RLock()

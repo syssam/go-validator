@@ -255,6 +255,19 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		return err
 	}
 
+	for _, tag := range f.validTags {
+		if validatefunc, ok := CustomTypeRuleMap.Get(tag.name); ok {
+			if result := validatefunc(v, o, tag); !result {
+				return &Error{
+					Name:       name,
+					StructName: structName,
+					Err:        formatsMessages(tag, v, f, o),
+					Tag:        tag.name,
+				}
+			}
+		}
+	}
+
 	switch v.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -436,7 +449,7 @@ func Required(v reflect.Value) bool {
 }
 
 // RequiredIf check value required when anotherfield str is a member of the set of strings params
-func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *validTag) bool {
+func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *ValidTag) bool {
 	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
 		anotherfield = anotherfield.Elem()
 	}
@@ -712,7 +725,7 @@ func RequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 	return true
 }
 
-func formatsMessages(validTag *validTag, v reflect.Value, f *field, o reflect.Value) error {
+func formatsMessages(validTag *ValidTag, v reflect.Value, f *field, o reflect.Value) error {
 	validator := newValidator()
 	if validator.Translator != nil {
 		message := validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)

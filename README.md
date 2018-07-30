@@ -14,6 +14,7 @@
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/simple">Simple</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/translations">Translations</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/gin">Gin</a></li>
+  <li><a href="https://github.com/syssam/go-validator/tree/master/examples/custom">Custom Validation Rules</a></li>
 </ul>
 <h2>Available Validation Rules</h2>
 <ul>
@@ -70,6 +71,14 @@
 <p>The field under validation must be less than the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
 <h4 id="rule-lte">lte=anotherfield</h4>
 <p>The field under validation must be less than or equal to the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
+<h2>Custom Validation Rules</h2>
+<div class="highlight highlight-source-go">
+  <pre>
+  validator.CustomTypeTagMap.Set("customValidator", func CustomValidator(v reflect.Value, o reflect.Value, validTag *validator.ValidTag) bool {
+    return false
+  })
+  </pre>
+</div>
 <h2>List of functions:</h2>
 <div class="highlight highlight-source-go">
   <pre>

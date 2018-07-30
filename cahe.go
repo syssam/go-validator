@@ -23,8 +23,8 @@ type field struct {
 	typ             reflect.Type
 }
 
-// A validTag represents parse validTag into field struct.
-type validTag struct {
+// A ValidTag represents parse validTag into field struct.
+type ValidTag struct {
 	name             string
 	params           []string
 	messageName      string
@@ -32,10 +32,10 @@ type validTag struct {
 }
 
 // A otherValidTags represents parse validTag into field struct when validTag is not required...
-type otherValidTags []*validTag
+type otherValidTags []*ValidTag
 
 // A requiredTags represents parse validTag into field struct when validTag is required...
-type requiredTags []*validTag
+type requiredTags []*ValidTag
 
 var fieldCache sync.Map // map[reflect.Type][]field
 
@@ -188,7 +188,7 @@ func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTag
 
 		switch tag[0] {
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
-			requiredTags = append(requiredTags, &validTag{
+			requiredTags = append(requiredTags, &ValidTag{
 				name:             tag[0],
 				params:           params,
 				messageName:      parseMessageName(tag[0], ft),
@@ -197,7 +197,7 @@ func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTag
 			continue
 		}
 
-		otherValidTags = append(otherValidTags, &validTag{
+		otherValidTags = append(otherValidTags, &ValidTag{
 			name:             tag[0],
 			params:           params,
 			messageName:      parseMessageName(tag[0], ft),
