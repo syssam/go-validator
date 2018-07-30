@@ -381,15 +381,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		sort.Sort(sv)
 		for _, k := range sv {
 			var err error
-			if v.MapIndex(k).Kind() != reflect.Struct {
-				err = newTypeValidator(v.MapIndex(k), f, o, jsonNamespace, structNamespace)
-				if err != nil {
-					return err
-				}
-			} else {
+			value := v.MapIndex(k)
+			if value.Kind() == reflect.Interface {
+				value = value.Elem()
+			}
+
+			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
 				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
-				err = validateStruct(v.MapIndex(k).Interface(), jsonNamespace, structNamespace)
+				err = validateStruct(value.Interface(), jsonNamespace, structNamespace)
 				if err != nil {
 					return err
 				}
@@ -412,12 +412,11 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		}
 		for i := 0; i < v.Len(); i++ {
 			var err error
-			if v.Index(i).Kind() != reflect.Struct {
-				err = newTypeValidator(v.Index(i), f, o, jsonNamespace, structNamespace)
-				if err != nil {
-					return err
-				}
-			} else {
+			value := v.Index(i)
+			if value.Kind() == reflect.Interface {
+				value = value.Elem()
+			}
+			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
 				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
 				err = validateStruct(v.Index(i).Interface(), jsonNamespace, structNamespace)

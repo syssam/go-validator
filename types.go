@@ -60,6 +60,7 @@ var RuleMap = map[string]ParamValidateFunc{}
 var ParamRuleMap = map[string]ParamValidateFunc{
 	"between": Between,
 	"min":     Min,
+	"max":     Max,
 }
 
 // ParamsRuleMap is a map of functions, that can be used as tags for ValidateStruct function.

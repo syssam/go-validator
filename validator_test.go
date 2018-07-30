@@ -221,6 +221,7 @@ func TestMin(t *testing.T) {
 		param    TestMinStruct
 		expected bool
 	}{
+
 		{TestMinStruct{}, true},
 		{TestMinStruct{String: "Hell"}, false},
 		{TestMinStruct{String: "Hello"}, true},
@@ -232,6 +233,7 @@ func TestMin(t *testing.T) {
 		{TestMinStruct{Float: 5.9}, true},
 		{TestMinStruct{Array: []string{"1", "2", "3", "4"}}, false},
 		{TestMinStruct{Array: []string{"1", "2", "3", "4", "5"}}, true},
+		{TestMinStruct{Array: []string{"1", "2", "3", "4", "5"}}, true},
 		{TestMinStruct{Map: map[string]string{
 			"rsc": "string",
 			"r":   "string",
@@ -239,6 +241,60 @@ func TestMin(t *testing.T) {
 			"adg": "string",
 		}}, false},
 		{TestMinStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+			"tt":  "string",
+		}}, true},
+	}
+
+	for i, test := range tests {
+		err := ValidateStruct(test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
+			}
+		}
+	}
+}
+
+func TestMax(t *testing.T) {
+	type TestMaxStruct struct {
+		String string            `valid:"max=5"`
+		Int    int               `valid:"max=5"`
+		Unit   uint              `valid:"max=5"`
+		Float  float64           `valid:"max=5.3"`
+		Array  []string          `valid:"max=5"`
+		Map    map[string]string `valid:"max=5"`
+	}
+	var tests = []struct {
+		param    TestMaxStruct
+		expected bool
+	}{
+		{TestMaxStruct{}, true},
+		{TestMaxStruct{String: "Hell"}, true},
+		{TestMaxStruct{String: "Hello World"}, false},
+		{TestMaxStruct{Int: 4}, true},
+		{TestMaxStruct{Int: 6}, false},
+		{TestMaxStruct{Unit: 4}, true},
+		{TestMaxStruct{Unit: 6}, false},
+		{TestMaxStruct{Float: 5.2}, true},
+		{TestMaxStruct{Float: 5.9}, false},
+		{TestMaxStruct{Array: []string{"1", "2", "3", "4"}}, true},
+		{TestMaxStruct{Array: []string{"1", "2", "3", "4", "5", "6"}}, false},
+		{TestMaxStruct{Array: []string{"1", "2", "3", "4", "5"}}, true},
+		{TestMaxStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+			"ab":  "string",
+			"cd":  "string",
+		}}, false},
+		{TestMaxStruct{Map: map[string]string{
 			"rsc": "string",
 			"r":   "string",
 			"gri": "string",
