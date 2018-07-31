@@ -259,6 +259,57 @@ func TestMin(t *testing.T) {
 	}
 }
 
+func TestSize(t *testing.T) {
+	type TestSizeStruct struct {
+		String string            `valid:"size=5"`
+		Int    int               `valid:"size=5"`
+		Unit   uint              `valid:"size=5"`
+		Float  float64           `valid:"size=5.3"`
+		Array  []string          `valid:"size=5"`
+		Map    map[string]string `valid:"size=5"`
+	}
+	var tests = []struct {
+		param    TestSizeStruct
+		expected bool
+	}{
+		{TestSizeStruct{}, true},
+		{TestSizeStruct{String: "Hell"}, false},
+		{TestSizeStruct{String: "Hello"}, true},
+		{TestSizeStruct{Int: 4}, false},
+		{TestSizeStruct{Int: 5}, true},
+		{TestSizeStruct{Unit: 4}, false},
+		{TestSizeStruct{Unit: 5}, true},
+		{TestSizeStruct{Float: 5.2}, false},
+		{TestSizeStruct{Float: 5.3}, true},
+		{TestSizeStruct{Array: []string{"1", "2", "3", "4"}}, false},
+		{TestSizeStruct{Array: []string{"1", "2", "3", "4", "5"}}, true},
+		{TestSizeStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+		}}, false},
+		{TestSizeStruct{Map: map[string]string{
+			"rsc": "string",
+			"r":   "string",
+			"gri": "string",
+			"adg": "string",
+			"tt":  "string",
+		}}, true},
+	}
+
+	for i, test := range tests {
+		err := ValidateStruct(test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
+			}
+		}
+	}
+}
+
 func TestFieldsEmail(t *testing.T) {
 	var tests = []struct {
 		param    FieldsEmail
