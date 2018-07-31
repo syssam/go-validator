@@ -101,6 +101,32 @@ func IsNull(str string) bool {
 	return len(str) == 0
 }
 
+// Size The field under validation must have a size matching the given value.
+// For string data, value corresponds to the number of characters.
+// For numeric data, value corresponds to a given integer value.
+// For an array | map | slice, size corresponds to the count of the array | map | slice.
+func Size(v reflect.Value, param ...string) bool {
+	switch v.Kind() {
+	case reflect.String:
+		p, _ := ToInt(param[0])
+		return compareString(v.String(), p, "==")
+	case reflect.Slice, reflect.Map, reflect.Array:
+		p, _ := ToInt(param[0])
+		return compareInt64(int64(v.Len()), p, "==")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		p, _ := ToInt(param[0])
+		return compareInt64(v.Int(), p, "==")
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		p, _ := ToUint(param[0])
+		return compareUnit64(v.Uint(), p, "==")
+	case reflect.Float32, reflect.Float64:
+		p, _ := ToFloat(param[0])
+		return compareFloat64(v.Float(), p, "==")
+	}
+
+	panic(fmt.Sprintf("validator: Size unsupport Type %T", v.Interface()))
+}
+
 // Max is the validation function for validating if the current field's value is less than or equal to the param's value.
 func Max(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
