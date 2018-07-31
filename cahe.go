@@ -308,6 +308,13 @@ func parseMessageParameterIntoMap(rule string, params ...string) messageParamete
 		return messageParameterMap{
 			"min": params[0],
 		}
+	case "size":
+		if len(params) != 1 {
+			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+		}
+		return messageParameterMap{
+			"size": params[0],
+		}
 	}
 
 	return nil
