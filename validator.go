@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 )
 
 const tagName string = "valid"
@@ -174,95 +175,91 @@ func Min(v reflect.Value, param ...string) bool {
 }
 
 // Lt is the validation function for validating if the current field's value is less than the param's value.
-func Lt(v reflect.Value, param ...string) bool {
+func Lt(v reflect.Value, anotherField reflect.Value) bool {
+	if v.Kind() != anotherField.Kind() {
+		panic(fmt.Sprintf("validator: Lt The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface()))
+	}
+
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param[0])
-		return LtString(v.String(), p)
+		return compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), "<")
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param[0])
-		return int64(v.Len()) < p
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), "<")
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param[0])
-		return LtInt64(v.Int(), p)
+		return compareInt64(v.Int(), anotherField.Int(), "<")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param[0])
-		return LtUnit64(v.Uint(), p)
+		return compareUnit64(v.Uint(), anotherField.Uint(), "<")
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param[0])
-		return LtFloat64(v.Float(), p)
+		return compareFloat64(v.Float(), anotherField.Float(), "<")
 	}
 
 	panic(fmt.Sprintf("validator: Lt unsupport Type %T", v.Interface()))
 }
 
 // Lte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func Lte(v reflect.Value, param ...string) bool {
+func Lte(v reflect.Value, anotherField reflect.Value) bool {
+	if v.Kind() != anotherField.Kind() {
+		panic(fmt.Sprintf("validator: Lte The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface()))
+	}
+
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param[0])
-		return LteString(v.String(), p)
+		return compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), "<=")
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param[0])
-		return int64(v.Len()) <= p
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), "<=")
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param[0])
-		return LteInt64(v.Int(), p)
+		return compareInt64(v.Int(), anotherField.Int(), "<=")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param[0])
-		return LteUnit64(v.Uint(), p)
+		return compareUnit64(v.Uint(), anotherField.Uint(), "<=")
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param[0])
-		return LteFloat64(v.Float(), p)
+		return compareFloat64(v.Float(), anotherField.Float(), "<=")
 	}
 
 	panic(fmt.Sprintf("validator: Lte unsupport Type %T", v.Interface()))
 }
 
-// Gte is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func Gte(v reflect.Value, param ...string) bool {
-	switch v.Kind() {
-	case reflect.String:
-		p, _ := ToInt(param[0])
-		return GteString(v.String(), p)
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param[0])
-		return int64(v.Len()) >= p
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param[0])
-		return GteInt64(v.Int(), p)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param[0])
-		return GteUnit64(v.Uint(), p)
-	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param[0])
-		return GteFloat64(v.Float(), p)
+// Gt is the validation function for validating if the current field's value is greater than to the param's value.
+func Gt(v reflect.Value, anotherField reflect.Value) bool {
+	if v.Kind() != anotherField.Kind() {
+		panic(fmt.Sprintf("validator: Gt The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface()))
 	}
 
-	panic(fmt.Sprintf("validator: Gte unsupport Type %T", v.Interface()))
-}
-
-// Gt is the validation function for validating if the current field's value is greater than to the param's value.
-func Gt(v reflect.Value, param ...string) bool {
 	switch v.Kind() {
 	case reflect.String:
-		p, _ := ToInt(param[0])
-		return GtString(v.String(), p)
+		return compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), ">")
 	case reflect.Slice, reflect.Map, reflect.Array:
-		p, _ := ToInt(param[0])
-		return int64(v.Len()) > p
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), ">")
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, _ := ToInt(param[0])
-		return GtInt64(v.Int(), p)
+		return compareInt64(v.Int(), anotherField.Int(), ">")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, _ := ToUint(param[0])
-		return GtUnit64(v.Uint(), p)
+		return compareUnit64(v.Uint(), anotherField.Uint(), ">")
 	case reflect.Float32, reflect.Float64:
-		p, _ := ToFloat(param[0])
-		return GtFloat64(v.Float(), p)
+		return compareFloat64(v.Float(), anotherField.Float(), ">")
 	}
 
 	panic(fmt.Sprintf("validator: Gt unsupport Type %T", v.Interface()))
+}
+
+// Gte is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func Gte(v reflect.Value, anotherField reflect.Value) bool {
+	if v.Kind() != anotherField.Kind() {
+		panic(fmt.Sprintf("validator: Gte The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface()))
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		return compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), ">=")
+	case reflect.Slice, reflect.Map, reflect.Array:
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), ">=")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return compareInt64(v.Int(), anotherField.Int(), ">=")
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return compareUnit64(v.Uint(), anotherField.Uint(), ">=")
+	case reflect.Float32, reflect.Float64:
+		return compareFloat64(v.Float(), anotherField.Float(), ">=")
+	}
+
+	panic(fmt.Sprintf("validator: Gte unsupport Type %T", v.Interface()))
 }
 
 func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
@@ -508,28 +505,28 @@ func (sv stringValues) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
-// Required check value required when anotherfield str is a member of the set of strings params
+// Required check value required when anotherField str is a member of the set of strings params
 func Required(v reflect.Value) bool {
 	return !Empty(v)
 }
 
-// RequiredIf check value required when anotherfield str is a member of the set of strings params
-func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, tag *ValidTag) bool {
-	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
-		anotherfield = anotherfield.Elem()
+// RequiredIf check value required when anotherField str is a member of the set of strings params
+func RequiredIf(v reflect.Value, anotherField reflect.Value, params []string, tag *ValidTag) bool {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+		anotherField = anotherField.Elem()
 	}
 
-	if !anotherfield.IsValid() {
+	if !anotherField.IsValid() {
 		return true
 	}
 
-	switch anotherfield.Kind() {
+	switch anotherField.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
-		value := ToString(anotherfield)
+		value := ToString(anotherField)
 		if InString(value, params...) {
 			if Empty(v) {
 				if tag != nil {
@@ -544,7 +541,7 @@ func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, ta
 	case reflect.Map:
 		values := []string{}
 		var sv stringValues
-		sv = anotherfield.MapKeys()
+		sv = anotherField.MapKeys()
 		sort.Sort(sv)
 		for _, k := range sv {
 			value := v.MapIndex(k)
@@ -601,29 +598,29 @@ func RequiredIf(v reflect.Value, anotherfield reflect.Value, params []string, ta
 			}
 		}
 	default:
-		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherfield.Interface()))
+		panic(fmt.Sprintf("validator: RequiredIf unsupport Type %T", anotherField.Interface()))
 	}
 
 	return true
 }
 
-// RequiredUnless check value required when anotherfield str is a member of the set of strings params
-func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...string) bool {
-	if anotherfield.Kind() == reflect.Interface || anotherfield.Kind() == reflect.Ptr {
-		anotherfield = anotherfield.Elem()
+// RequiredUnless check value required when anotherField str is a member of the set of strings params
+func RequiredUnless(v reflect.Value, anotherField reflect.Value, params ...string) bool {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+		anotherField = anotherField.Elem()
 	}
 
-	if !anotherfield.IsValid() {
+	if !anotherField.IsValid() {
 		return true
 	}
 
-	switch anotherfield.Kind() {
+	switch anotherField.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
-		value := ToString(anotherfield)
+		value := ToString(anotherField)
 		if !InString(value, params...) {
 			if Empty(v) {
 				return false
@@ -632,7 +629,7 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 	case reflect.Map:
 		values := []string{}
 		var sv stringValues
-		sv = anotherfield.MapKeys()
+		sv = anotherField.MapKeys()
 		sort.Sort(sv)
 		for _, k := range sv {
 			value := v.MapIndex(k)
@@ -677,7 +674,7 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 			}
 		}
 	default:
-		panic(fmt.Sprintf("validator: requiredUnless unsupport Type %T", anotherfield.Interface()))
+		panic(fmt.Sprintf("validator: requiredUnless unsupport Type %T", anotherField.Interface()))
 	}
 
 	return true
@@ -686,11 +683,11 @@ func RequiredUnless(v reflect.Value, anotherfield reflect.Value, params ...strin
 // allFailingRequired validate that an attribute exists when all other attributes do not.
 func allFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		anotherfield, err := findField(p, v)
+		anotherField, err := findField(p, v)
 		if err != nil {
 			continue
 		}
-		if !Empty(anotherfield) {
+		if !Empty(anotherField) {
 			return false
 		}
 	}
@@ -700,11 +697,11 @@ func allFailingRequired(parameters []string, v reflect.Value) bool {
 // anyFailingRequired determine if any of the given attributes fail the required test.
 func anyFailingRequired(parameters []string, v reflect.Value) bool {
 	for _, p := range parameters {
-		anotherfield, err := findField(p, v)
+		anotherField, err := findField(p, v)
 		if err != nil {
 			return true
 		}
-		if Empty(anotherfield) {
+		if Empty(anotherField) {
 			return true
 		}
 	}
@@ -718,13 +715,13 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 		case "required":
 			isError = !Required(v)
 		case "requiredIf":
-			anotherfield, err := findField(tag.params[0], o)
-			if err == nil && len(tag.params) >= 2 && !RequiredIf(v, anotherfield, tag.params[1:], tag) {
+			anotherField, err := findField(tag.params[0], o)
+			if err == nil && len(tag.params) >= 2 && !RequiredIf(v, anotherField, tag.params[1:], tag) {
 				isError = true
 			}
 		case "requiredUnless":
-			anotherfield, err := findField(tag.params[0], o)
-			if err == nil && len(tag.params) >= 2 && !RequiredUnless(v, anotherfield, tag.params[1:]...) {
+			anotherField, err := findField(tag.params[0], o)
+			if err == nil && len(tag.params) >= 2 && !RequiredUnless(v, anotherField, tag.params[1:]...) {
 				isError = true
 			}
 		case "requiredWith":
@@ -944,4 +941,29 @@ func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 	}
 
 	return current, nil
+}
+
+func checkDependentRules(validTag *ValidTag, f *field, v reflect.Value, o reflect.Value, name string, structName string) error {
+	isValid := true
+	switch validTag.name {
+	case "gt":
+		isValid = Gt(v, o)
+	case "gte":
+		isValid = Gte(v, o)
+	case "lt":
+		isValid = Lt(v, o)
+	case "lte":
+		isValid = Lte(v, o)
+	}
+
+	if !isValid {
+		return &Error{
+			Name:       name,
+			StructName: structName,
+			Err:        formatsMessages(validTag, v, f, o),
+			Tag:        validTag.name,
+		}
+	}
+
+	return nil
 }
