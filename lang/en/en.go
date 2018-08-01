@@ -66,6 +66,8 @@ var MessageMap = map[string]string{
 	"notIn":              "The selected :attribute is invalid.",
 	"notRegex":           "The :attribute format is invalid.",
 	"numeric":            "The :attribute must be a number.",
+	"int":                "The :attribute must be a integer.",
+	"float":              "The :attribute must be a float number.",
 	"present":            "The :attribute field must be present.",
 	"regex":              "The :attribute format is invalid.",
 	"required":           "The :attribute field is required.",

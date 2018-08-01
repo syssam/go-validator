@@ -66,6 +66,8 @@ var MessageMap = map[string]string{
 	"notIn":              "选定的 :attribute 是无效的.",
 	"notRegex":           "无效的 :attribute 格式.",
 	"numeric":            ":attribute 必须是数字.",
+	"int":                ":attribute 必须是整数.",
+	"float":              ":attribute 必须是浮点数.",
 	"present":            ":attribute 必须存在.",
 	"regex":              "无效的 :attribute 格式.",
 	"required":           ":attribute 字段是必须的.",
