@@ -106,6 +106,30 @@ func DigitsBetween(v reflect.Value, params ...string) bool {
 	panic(fmt.Sprintf("validator: DigitsBetween unsupport Type %T", v.Interface()))
 }
 
+// IsAlpha check if the string contains only letters (a-zA-Z). Empty string is valid.
+func IsAlpha(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlpha.MatchString(str)
+}
+
+// IsAlphanNum check if the string contains only letters and numbers. Empty string is valid.
+func IsAlphanNum(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphanNum.MatchString(str)
+}
+
+// IsAlphanDash check if the string contains only letters and "_". Empty string is valid.
+func IsAlphanDash(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphanNum.MatchString(str)
+}
+
 // IsNumeric check if the string contains only numbers. Empty string is valid.
 func IsNumeric(str string) bool {
 	if IsNull(str) {
@@ -122,9 +146,12 @@ func IsInt(str string) bool {
 	return rxInt.MatchString(str)
 }
 
-// IsFloat check if the string is a float.
+// IsFloat check if the string is a float. Empty string is valid.
 func IsFloat(str string) bool {
-	return str != "" && rxFloat.MatchString(str)
+	if IsNull(str) {
+		return true
+	}
+	return rxFloat.MatchString(str)
 }
 
 // IsNull check if the string is null.

@@ -25,7 +25,6 @@
     <li><a>requiredWithAll</a></li>
     <li><a>requiredWithout</a></li>
     <li><a>requiredWithoutAll</a></li>
-    <li><a>email</a></li>
     <li><a>between</a></li>
     <li><a>digitsBetween</a></li>
     <li><a>size</a></li>
@@ -35,6 +34,13 @@
     <li><a>gte</a></li>
     <li><a>lt</a></li>
     <li><a>lte</a></li>
+    <li><a>email</a></li>
+    <li><a>alphanNum</a></li>
+    <li><a>alphanDash</a></li>
+    <li><a>numeric</a></li>
+    <li><a>int</a></li>
+    <li><a>float</a></li>
+    <li><a>null</a></li>
 </ul>
 <h4 id="rule-required">required</h4>
 <p>The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:</p>
@@ -57,8 +63,6 @@
 <p>The field under validation must be present and not empty only when any of the other specified fields are not present.</p>
 <h4 id="rule-requiredIf">requiredWithoutAll=anotherfield|anotherfield|...</h4>
 <p>The field under validation must be present and not empty only when all of the other specified fields are not present.</p>
-<h4 id="rule-email">email</h4>
-<p>The field under validation must be formatted as an e-mail address.</p>
 <h4 id="rule-between">between=min|max</h4>
 <p>The field under validation must have a size between the given min and max. String, Number, Array, Map are evaluated in the same fashion as the size rule.</p>
 <h4 id="rule-between">digitsBetween=min|max</h4>
@@ -77,6 +81,18 @@
 <p>The field under validation must be less than the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
 <h4 id="rule-lte">lte=anotherfield</h4>
 <p>The field under validation must be less than or equal to the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
+<h4 id="rule-email">email</h4>
+<p>The field under validation must be formatted as an e-mail address.</p>
+<h4 id="rule-alphanNum">alphanNum</h4>
+<p>The field under validation must be contains only letters and numbers. Empty string is valid.</p>
+<h4 id="rule-alphanDash">alphanDash</h4>
+<p>The field under validation must be contains only letters and "_". Empty string is valid.</p>
+<h4 id="rule-numeric">numeric</h4>
+<p>The field under validation must be contains only numbers. Empty string is valid.</p>
+<h4 id="rule-int">int</h4>
+<p>The field under validation must be contains only int. Empty string is valid.</p>
+<h4 id="rule-float">float</h4>
+<p>The field under validation must be contains only float. Empty string is valid.</p>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>

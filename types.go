@@ -81,5 +81,11 @@ var ParamsRuleMap = map[string]ParamValidateFunc{
 
 // StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when refelect type is string.
 var StringRulesMap = map[string]StringValidateFunc{
-	"email": IsEmail,
+	"email":      IsEmail,
+	"alphanNum":  IsAlphanNum,
+	"alphanDash": IsAlphanDash,
+	"numeric":    IsNumeric,
+	"int":        IsInt,
+	"float":      IsFloat,
+	"null":       IsNull,
 }
