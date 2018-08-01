@@ -85,17 +85,17 @@
 <h4 id="rule-email">email</h4>
 <p>The field under validation must be formatted as an e-mail address.</p>
 <h4 id="rule-alpha">alpha</h4>
-<p>The field under validation must be contains only letters. Empty string is valid.</p>
+<p>The field under validation may be only contains letters. Empty string is valid.</p>
 <h4 id="rule-alphaNum">alphaNum</h4>
-<p>The field under validation must be contains only letters and numbers. Empty string is valid.</p>
+<p>The field under validation may be only contains letters and numbers. Empty string is valid.</p>
 <h4 id="rule-alphaDash">alphaDash</h4>
-<p>The field under validation must be contains only letters and "_". Empty string is valid.</p>
+<p>The field under validation may be only contains letters, numbers, dashes and underscores. Empty string is valid.</p>
 <h4 id="rule-numeric">numeric</h4>
-<p>The field under validation must be contains only numbers. Empty string is valid.</p>
+<p>The field under validation must be numbers. Empty string is valid.</p>
 <h4 id="rule-int">int</h4>
-<p>The field under validation must be contains only int. Empty string is valid.</p>
+<p>The field under validation must be int. Empty string is valid.</p>
 <h4 id="rule-float">float</h4>
-<p>The field under validation must be contains only float. Empty string is valid.</p>
+<p>The field under validation must be float. Empty string is valid.</p>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>

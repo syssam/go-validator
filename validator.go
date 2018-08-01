@@ -106,7 +106,7 @@ func DigitsBetween(v reflect.Value, params ...string) bool {
 	panic(fmt.Sprintf("validator: DigitsBetween unsupport Type %T", v.Interface()))
 }
 
-// IsAlpha check if the string contains only letters (a-zA-Z). Empty string is valid.
+// IsAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
 func IsAlpha(str string) bool {
 	if IsNull(str) {
 		return true
@@ -114,7 +114,7 @@ func IsAlpha(str string) bool {
 	return rxAlpha.MatchString(str)
 }
 
-// IsAlphaNum check if the string contains only letters and numbers. Empty string is valid.
+// IsAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
 func IsAlphaNum(str string) bool {
 	if IsNull(str) {
 		return true
@@ -122,7 +122,7 @@ func IsAlphaNum(str string) bool {
 	return rxAlphaNum.MatchString(str)
 }
 
-// IsAlphaDash check if the string contains only letters and "_". Empty string is valid.
+// IsAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
 func IsAlphaDash(str string) bool {
 	if IsNull(str) {
 		return true
@@ -130,7 +130,7 @@ func IsAlphaDash(str string) bool {
 	return rxAlphaNum.MatchString(str)
 }
 
-// IsNumeric check if the string contains only numbers. Empty string is valid.
+// IsNumeric check if the string must be numeric. Empty string is valid.
 func IsNumeric(str string) bool {
 	if IsNull(str) {
 		return true
@@ -138,7 +138,7 @@ func IsNumeric(str string) bool {
 	return rxNumeric.MatchString(str)
 }
 
-// IsInt check if the string is an integer. Empty string is valid.
+// IsInt check if the string must be an integer. Empty string is valid.
 func IsInt(str string) bool {
 	if IsNull(str) {
 		return true
@@ -146,7 +146,7 @@ func IsInt(str string) bool {
 	return rxInt.MatchString(str)
 }
 
-// IsFloat check if the string is a float. Empty string is valid.
+// IsFloat check if the string must be an float. Empty string is valid.
 func IsFloat(str string) bool {
 	if IsNull(str) {
 		return true
