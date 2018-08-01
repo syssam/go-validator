@@ -114,20 +114,20 @@ func IsAlpha(str string) bool {
 	return rxAlpha.MatchString(str)
 }
 
-// IsAlphanNum check if the string contains only letters and numbers. Empty string is valid.
-func IsAlphanNum(str string) bool {
+// IsAlphaNum check if the string contains only letters and numbers. Empty string is valid.
+func IsAlphaNum(str string) bool {
 	if IsNull(str) {
 		return true
 	}
-	return rxAlphanNum.MatchString(str)
+	return rxAlphaNum.MatchString(str)
 }
 
-// IsAlphanDash check if the string contains only letters and "_". Empty string is valid.
-func IsAlphanDash(str string) bool {
+// IsAlphaDash check if the string contains only letters and "_". Empty string is valid.
+func IsAlphaDash(str string) bool {
 	if IsNull(str) {
 		return true
 	}
-	return rxAlphanNum.MatchString(str)
+	return rxAlphaNum.MatchString(str)
 }
 
 // IsNumeric check if the string contains only numbers. Empty string is valid.

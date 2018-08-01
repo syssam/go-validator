@@ -35,8 +35,9 @@
     <li><a>lt</a></li>
     <li><a>lte</a></li>
     <li><a>email</a></li>
-    <li><a>alphanNum</a></li>
-    <li><a>alphanDash</a></li>
+    <li><a>alpha</a></li>
+    <li><a>alphaNum</a></li>
+    <li><a>alphaDash</a></li>
     <li><a>numeric</a></li>
     <li><a>int</a></li>
     <li><a>float</a></li>
@@ -83,9 +84,11 @@
 <p>The field under validation must be less than or equal to the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
 <h4 id="rule-email">email</h4>
 <p>The field under validation must be formatted as an e-mail address.</p>
-<h4 id="rule-alphanNum">alphanNum</h4>
+<h4 id="rule-alpha">alpha</h4>
+<p>The field under validation must be contains only letters. Empty string is valid.</p>
+<h4 id="rule-alphaNum">alphaNum</h4>
 <p>The field under validation must be contains only letters and numbers. Empty string is valid.</p>
-<h4 id="rule-alphanDash">alphanDash</h4>
+<h4 id="rule-alphaDash">alphaDash</h4>
 <p>The field under validation must be contains only letters and "_". Empty string is valid.</p>
 <h4 id="rule-numeric">numeric</h4>
 <p>The field under validation must be contains only numbers. Empty string is valid.</p>
