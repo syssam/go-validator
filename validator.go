@@ -96,7 +96,7 @@ func DigitsBetween(v reflect.Value, params ...string) bool {
 			value = ToString(v.Uint())
 		}
 
-		if value == "" && !IsNumeric(value) {
+		if value == "" || !IsNumeric(value) {
 			return false
 		}
 
