@@ -331,6 +331,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 		}
 	}
+
 	switch v.Kind() {
 	case reflect.Bool,
 		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
@@ -339,6 +340,10 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		reflect.String:
 
 		for _, tag := range f.validTags {
+
+			if err := checkDependentRules(tag, f, v, o, name, structName); err != nil {
+				return err
+			}
 
 			if validfunc, ok := RuleMap[tag.name]; ok {
 				isValid := validfunc(v)
@@ -386,6 +391,11 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		}
 
 		for _, tag := range f.validTags {
+
+			if err := checkDependentRules(tag, f, v, o, name, structName); err != nil {
+				return err
+			}
+
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
@@ -421,6 +431,9 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		return nil
 	case reflect.Slice, reflect.Array:
 		for _, tag := range f.validTags {
+			if err := checkDependentRules(tag, f, v, o, name, structName); err != nil {
+				return err
+			}
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params...)
 				if !isValid {
@@ -945,15 +958,25 @@ func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 
 func checkDependentRules(validTag *ValidTag, f *field, v reflect.Value, o reflect.Value, name string, structName string) error {
 	isValid := true
+	var anotherField reflect.Value
+	var err error
+	switch validTag.name {
+	case "gt", "gte", "lt", "lte":
+		anotherField, err = findField(validTag.params[0], o)
+		if err != nil {
+			return nil
+		}
+	}
+
 	switch validTag.name {
 	case "gt":
-		isValid = Gt(v, o)
+		isValid = Gt(v, anotherField)
 	case "gte":
-		isValid = Gte(v, o)
+		isValid = Gte(v, anotherField)
 	case "lt":
-		isValid = Lt(v, o)
+		isValid = Lt(v, anotherField)
 	case "lte":
-		isValid = Lte(v, o)
+		isValid = Lte(v, anotherField)
 	}
 
 	if !isValid {

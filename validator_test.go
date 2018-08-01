@@ -363,6 +363,72 @@ func TestSize(t *testing.T) {
 	}
 }
 
+func TestGt(t *testing.T) {
+	type GtStruct struct {
+		String         string `valid:"gt=GtStructString"`
+		GtStructString string
+		Number         int `valid:"gt=GtStructNumber"`
+		GtStructNumber int
+		Array          []string `valid:"gt=GtStructArray"`
+		GtStructArray  []string
+	}
+	var tests = []struct {
+		param    GtStruct
+		expected bool
+	}{
+		{GtStruct{}, true},
+		{GtStruct{String: "Hell", GtStructString: "Hello"}, false},
+		{GtStruct{String: "Hello World", GtStructString: "Hello"}, true},
+		{GtStruct{Number: 4, GtStructNumber: 5}, false},
+		{GtStruct{Number: 10, GtStructNumber: 5}, true},
+		{GtStruct{Array: []string{"1", "2", "3", "4"}, GtStructArray: []string{"1", "2", "3", "4", "5"}}, false},
+		{GtStruct{Array: []string{"1", "2", "3", "4", "5"}, GtStructArray: []string{"1", "2", "3", "4"}}, true},
+	}
+	for i, test := range tests {
+		err := ValidateStruct(&test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
+			}
+		}
+	}
+}
+
+func TestGte(t *testing.T) {
+	type GteStruct struct {
+		String          string `valid:"gte=GteStructString"`
+		GteStructString string
+		Number          int `valid:"gte=GteStructNumber"`
+		GteStructNumber int
+		Array           []string `valid:"gte=GteStructArray"`
+		GteStructArray  []string
+	}
+	var tests = []struct {
+		param    GteStruct
+		expected bool
+	}{
+		{GteStruct{}, true},
+		{GteStruct{String: "Hell", GteStructString: "Hello"}, false},
+		{GteStruct{String: "Hello World", GteStructString: "Hello"}, true},
+		{GteStruct{Number: 4, GteStructNumber: 5}, false},
+		{GteStruct{Number: 10, GteStructNumber: 5}, true},
+		{GteStruct{Array: []string{"1", "2", "3", "4"}, GteStructArray: []string{"1", "2", "3", "4", "5"}}, false},
+		{GteStruct{Array: []string{"1", "2", "3", "4", "5"}, GteStructArray: []string{"1", "2", "3", "4"}}, true},
+	}
+	for i, test := range tests {
+		err := ValidateStruct(&test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%T) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%T): %s", test.param, err)
+			}
+		}
+	}
+}
+
 func TestFieldsEmail(t *testing.T) {
 	var tests = []struct {
 		param    FieldsEmail

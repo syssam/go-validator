@@ -30,10 +30,10 @@
     <li><a>size</a></li>
     <li><a>max</a></li>
     <li><a>min</a></li>
-    <li><a>gt - TO DO</a></li>
-    <li><a>gte - TO DO</a></li>
-    <li><a>lt - TO DO</a></li>
-    <li><a>lte - TO DO</a></li>
+    <li><a>gt</a></li>
+    <li><a>gte</a></li>
+    <li><a>lt</a></li>
+    <li><a>lte</a></li>
 </ul>
 <h4 id="rule-required">required</h4>
 <p>The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:</p>
