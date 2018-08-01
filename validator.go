@@ -76,6 +76,36 @@ func Between(v reflect.Value, params ...string) bool {
 	panic(fmt.Sprintf("validator: Between unsupport Type %T", v.Interface()))
 }
 
+// DigitsBetween check The field under validation must have a length between the given min and max.
+func DigitsBetween(v reflect.Value, params ...string) bool {
+	if len(params) != 2 {
+		return false
+	}
+
+	switch v.Kind() {
+	case reflect.String, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		min, _ := ToInt(params[0])
+		max, _ := ToInt(params[1])
+		var value string
+		switch v.Kind() {
+		case reflect.String:
+			value = v.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			value = ToString(v.Int())
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			value = ToString(v.Uint())
+		}
+
+		if value == "" && !IsNumeric(value) {
+			return false
+		}
+
+		return BetweenString(value, min, max)
+	}
+
+	panic(fmt.Sprintf("validator: DigitsBetween unsupport Type %T", v.Interface()))
+}
+
 // IsNumeric check if the string contains only numbers. Empty string is valid.
 func IsNumeric(str string) bool {
 	if IsNull(str) {

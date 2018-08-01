@@ -27,6 +27,7 @@
     <li><a>requiredWithoutAll</a></li>
     <li><a>email</a></li>
     <li><a>between</a></li>
+    <li><a>digitsBetween</a></li>
     <li><a>size</a></li>
     <li><a>max</a></li>
     <li><a>min</a></li>
@@ -60,6 +61,8 @@
 <p>The field under validation must be formatted as an e-mail address.</p>
 <h4 id="rule-between">between=min|max</h4>
 <p>The field under validation must have a size between the given min and max. String, Number, Array, Map are evaluated in the same fashion as the size rule.</p>
+<h4 id="rule-between">digitsBetween=min|max</h4>
+<p>The field under validation must have a length between the given min and max.</p>
 <h4 id="rule-max">size=value</h4>
 <p>The field under validation must have a size matching the given value. For string data, value corresponds to the number of characters. For numeric data, value corresponds to a given integer value. For an array | map | slice, size corresponds to the count of the array | map | slice.</p>
 <h4 id="rule-max">max=value</h4>
