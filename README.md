@@ -38,6 +38,9 @@
     <li><a>alpha</a></li>
     <li><a>alphaNum</a></li>
     <li><a>alphaDash</a></li>
+    <li><a>alphaUnicode</a></li>
+    <li><a>alphaNumUnicode</a></li>
+    <li><a>alphaDashUnicode</a></li>
     <li><a>numeric</a></li>
     <li><a>int</a></li>
     <li><a>integer</a></li>
@@ -93,6 +96,12 @@
 <h4 id="rule-alphaNum">alphaNum</h4>
 <p>The field under validation may be only contains letters and numbers. Empty string is valid.</p>
 <h4 id="rule-alphaDash">alphaDash</h4>
+<p>The field under validation may be only contains letters, numbers, dashes and underscores. Empty string is valid.</p>
+<h4 id="rule-alpha">alphaUnicode</h4>
+<p>The field under validation may be only contains letters. Empty string is valid.</p>
+<h4 id="rule-alphaNum">alphaNumUnicode</h4>
+<p>The field under validation may be only contains letters and numbers. Empty string is valid.</p>
+<h4 id="rule-alphaDash">alphaDashUnicode</h4>
 <p>The field under validation may be only contains letters, numbers, dashes and underscores. Empty string is valid.</p>
 <h4 id="rule-numeric">numeric</h4>
 <p>The field under validation must be numbers. Empty string is valid.</p>

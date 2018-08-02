@@ -61,7 +61,31 @@ func IsAlphaDash(str string) bool {
 	if IsNull(str) {
 		return true
 	}
-	return rxAlphaNum.MatchString(str)
+	return rxAlphaDash.MatchString(str)
+}
+
+// IsAlphaUnicode check if the string may be only contains letters (a-zA-Z). Empty string is valid.
+func IsAlphaUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaUnicode.MatchString(str)
+}
+
+// IsAlphaNumUnicode check if the string may be only contains letters and numbers. Empty string is valid.
+func IsAlphaNumUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaNumUnicode.MatchString(str)
+}
+
+// IsAlphaDashUnicode check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
+func IsAlphaDashUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaDashUnicode.MatchString(str)
 }
 
 // IsNumeric check if the string must be numeric. Empty string is valid.
