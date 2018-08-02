@@ -21,6 +21,15 @@ func ToFloat(str string) (float64, error) {
 	return res, err
 }
 
+// ToBool convert the input string to a bool if the input is not a string.
+func ToBool(str string) bool {
+	if str == "true" || str == "1" {
+		return true
+	}
+
+	return false
+}
+
 // ToInt convert the input string or any int type to an integer type 64, or 0 if the input is not an integer.
 func ToInt(value interface{}) (res int64, err error) {
 	val := reflect.ValueOf(value)
