@@ -9,7 +9,7 @@ const (
 	AlphaNum         string = "^[a-zA-Z0-9]+$"
 	AlphaDash        string = "^[a-zA-Z_-]+$"
 	AlphaUnicode     string = "^[\\p{L}]+$"
-	AlphaNumUnicode  string = "^[\\p{L}\\p{N}]+$"
+	AlphaNumUnicode  string = "^[\\p{L}\\p{M}\\p{N}]+$"
 	AlphaDashUnicode string = "^[\\p{L}\\p{M}\\p{N}_-]+$"
 	Numeric          string = "^[0-9]+$"
 	Int              string = "^(?:[-+]?(?:0|[1-9][0-9]*))$"
