@@ -38,12 +38,6 @@ func newValidator() *Validator {
 	return loadValidatorOnce
 }
 
-// IsEmail check if the string is an email.
-func IsEmail(str string) bool {
-	// TODO uppercase letters are not supported
-	return rxEmail.MatchString(str)
-}
-
 // Between check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
 func Between(v reflect.Value, params ...string) bool {
 	if len(params) != 2 {
@@ -104,59 +98,6 @@ func DigitsBetween(v reflect.Value, params ...string) bool {
 	}
 
 	panic(fmt.Sprintf("validator: DigitsBetween unsupport Type %T", v.Interface()))
-}
-
-// IsAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
-func IsAlpha(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlpha.MatchString(str)
-}
-
-// IsAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
-func IsAlphaNum(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaNum.MatchString(str)
-}
-
-// IsAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
-func IsAlphaDash(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaNum.MatchString(str)
-}
-
-// IsNumeric check if the string must be numeric. Empty string is valid.
-func IsNumeric(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxNumeric.MatchString(str)
-}
-
-// IsInt check if the string must be an integer. Empty string is valid.
-func IsInt(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxInt.MatchString(str)
-}
-
-// IsFloat check if the string must be an float. Empty string is valid.
-func IsFloat(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxFloat.MatchString(str)
-}
-
-// IsNull check if the string is null.
-func IsNull(str string) bool {
-	return len(str) == 0
 }
 
 // Size The field under validation must have a size matching the given value.

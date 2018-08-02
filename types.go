@@ -75,4 +75,7 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"int":       IsInt,
 	"integer":   IsInt,
 	"float":     IsFloat,
+	"ip":        IsIP,
+	"ipv4":      IsIPv4,
+	"ipv6":      IsIPv6,
 }

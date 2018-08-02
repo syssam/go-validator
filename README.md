@@ -43,6 +43,9 @@
     <li><a>integer</a></li>
     <li><a>float</a></li>
     <li><a>null</a></li>
+    <li><a>ip</a></li>
+    <li><a>ipv4</a></li>
+    <li><a>ipv6</a></li>
 </ul>
 <h4 id="rule-required">required</h4>
 <p>The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:</p>
@@ -97,6 +100,12 @@
 <p>The field under validation must be int. Empty string is valid.</p>
 <h4 id="rule-float">float</h4>
 <p>The field under validation must be float. Empty string is valid.</p>
+<h4 id="rule-ip">ip</h4>
+<p>The field under validation must be an IP address.</p>
+<h4 id="rule-ipv4">ipv4</h4>
+<p>The field under validation must be an IPv4 address.</p>
+<h4 id="rule-ipv6">ipv6</h4>
+<p>The field under validation must be an IPv6 address.</p>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>
