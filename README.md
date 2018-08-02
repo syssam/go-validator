@@ -40,6 +40,7 @@
     <li><a>alphaDash</a></li>
     <li><a>numeric</a></li>
     <li><a>int</a></li>
+    <li><a>integer</a></li>
     <li><a>float</a></li>
     <li><a>null</a></li>
 </ul>

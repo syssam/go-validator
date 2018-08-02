@@ -73,5 +73,6 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"alphaDash": IsAlphaDash,
 	"numeric":   IsNumeric,
 	"int":       IsInt,
+	"integer":   IsInt,
 	"float":     IsFloat,
 }
