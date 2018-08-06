@@ -324,19 +324,15 @@ func ValidateStruct(s interface{}) error {
 }
 
 func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
-	if !v.IsValid() {
+	if !v.IsValid() || f.omitEmpty && Empty(v) {
 		return nil
-	}
 
+	}
 	name := string(append(jsonNamespace, f.nameBytes...))
 	structName := string(append(structNamespace, f.structName...))
 
 	if err := checkRequired(v, f, o, name, structName); err != nil {
 		return err
-	}
-
-	if Empty(v) {
-		return nil
 	}
 
 	for _, tag := range f.validTags {

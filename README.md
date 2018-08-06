@@ -18,6 +18,7 @@
 </ul>
 <h2>Available Validation Rules</h2>
 <ul>
+    <li><a>omitempty</a></li>
     <li><a>required</a></li>
     <li><a>requiredIf</a></li>
     <li><a>requiredUnless</a></li>
@@ -51,6 +52,8 @@
     <li><a>ipv4</a></li>
     <li><a>ipv6</a></li>
 </ul>
+<h4 id="rule-omitempty">omitempty</h4>
+<p>The "omitempty" option specifies that the field should be omitted from the encoding if the field has an empty value, defined as false, 0, a nil pointer, a nil interface value, and any empty array, slice, map, or string.</p>
 <h4 id="rule-required">required</h4>
 <p>The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:</p>
 <div class="content-list">
