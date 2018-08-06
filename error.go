@@ -37,12 +37,12 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 		} else {
 			buff.WriteByte(',')
 		}
-		buff.WriteString(`"Message":`)
+		buff.WriteString(`"message":`)
 		buff.WriteByte('"')
 		buff.WriteString(e.Error())
 		buff.WriteByte('"')
 		buff.WriteByte(',')
-		buff.WriteString(`"Parameter":`)
+		buff.WriteString(`"parameter":`)
 		buff.WriteByte('"')
 		buff.WriteString(e.(*Error).Name)
 		buff.WriteByte('"')
