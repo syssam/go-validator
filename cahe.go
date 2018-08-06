@@ -21,6 +21,7 @@ type field struct {
 	requiredTags    requiredTags
 	validTags       otherValidTags
 	typ             reflect.Type
+	omitEmpty       bool
 }
 
 // A ValidTag represents parse validTag into field struct.
@@ -130,6 +131,7 @@ func typefields(t reflect.Type) []field {
 						requiredTags:    requiredTags,
 						validTags:       otherValidTags,
 						typ:             ft,
+						omitEmpty:       validTag.Contains("omitempty"),
 					})
 
 					if count[f.typ] > 1 {
@@ -158,6 +160,7 @@ func typefields(t reflect.Type) []field {
 						requiredTags:    requiredTags,
 						validTags:       otherValidTags,
 						typ:             ft,
+						omitEmpty:       validTag.Contains("omitempty"),
 					})
 				}
 			}
