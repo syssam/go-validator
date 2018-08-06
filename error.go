@@ -30,22 +30,24 @@ func (es Errors) Error() string {
 func (es Errors) MarshalJSON() ([]byte, error) {
 	var buff bytes.Buffer
 	first := true
-	buff.WriteByte('{')
+	buff.WriteByte('[')
 	for _, e := range es {
 		if first {
 			first = false
 		} else {
 			buff.WriteByte(',')
 		}
-		buff.WriteByte('"')
-		buff.WriteString(e.(*Error).Name)
-		buff.WriteByte('"')
-		buff.WriteByte(':')
+		buff.WriteString(`"Message":`)
 		buff.WriteByte('"')
 		buff.WriteString(e.Error())
 		buff.WriteByte('"')
+		buff.WriteByte(',')
+		buff.WriteString(`"Parameter":`)
+		buff.WriteByte('"')
+		buff.WriteString(e.(*Error).Name)
+		buff.WriteByte('"')
 	}
-	buff.WriteByte('}')
+	buff.WriteByte(']')
 	return buff.Bytes(), nil
 }
 
