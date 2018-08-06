@@ -131,7 +131,7 @@ func typefields(t reflect.Type) []field {
 						requiredTags:    requiredTags,
 						validTags:       otherValidTags,
 						typ:             ft,
-						omitEmpty:       validTag.Contains("omitempty"),
+						omitEmpty:       strings.Contains(validTag, "omitempty"),
 					})
 
 					if count[f.typ] > 1 {
@@ -160,7 +160,7 @@ func typefields(t reflect.Type) []field {
 						requiredTags:    requiredTags,
 						validTags:       otherValidTags,
 						typ:             ft,
-						omitEmpty:       validTag.Contains("omitempty"),
+						omitEmpty:       strings.Contains(validTag, "omitempty"),
 					})
 				}
 			}
