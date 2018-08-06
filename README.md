@@ -30,6 +30,7 @@
     <li><a>size</a></li>
     <li><a>max</a></li>
     <li><a>min</a></li>
+    <li><a>same</a></li>
     <li><a>gt</a></li>
     <li><a>gte</a></li>
     <li><a>lt</a></li>
@@ -81,6 +82,8 @@
 <p>The field under validation must be less than or equal to a maximum value. String, Number, Array, Map are evaluated in the same fashion as the size rule.</p>
 <h4 id="rule-min">min=value</h4>
 <p>The field under validation must be greater than or equal to a minimum value. String, Number, Array, Map are evaluated in the same fashion as the size rule.</p>
+<h4 id="rule-same">same=anotherfield</h4>
+<p>The given field must match the field under validation.</p>
 <h4 id="rule-gt">gt=anotherfield</h4>
 <p>The field under validation must be greater than the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
 <h4 id="rule-gte">gte=anotherfield</h4>

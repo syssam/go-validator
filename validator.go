@@ -172,6 +172,28 @@ func Min(v reflect.Value, param ...string) bool {
 	panic(fmt.Sprintf("validator: Min unsupport Type %T", v.Interface()))
 }
 
+// Same is the validation function for validating if the current field's value euqal the param's value.
+func Same(v reflect.Value, anotherField reflect.Value) bool {
+	if v.Kind() != anotherField.Kind() {
+		panic(fmt.Sprintf("validator: Same The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface()))
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		return v.String() == anotherField.String()
+	case reflect.Slice, reflect.Map, reflect.Array:
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), "==")
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return compareInt64(v.Int(), anotherField.Int(), "==")
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return compareUnit64(v.Uint(), anotherField.Uint(), "==")
+	case reflect.Float32, reflect.Float64:
+		return compareFloat64(v.Float(), anotherField.Float(), "==")
+	}
+
+	panic(fmt.Sprintf("validator: Lt unsupport Type %T", v.Interface()))
+}
+
 // Lt is the validation function for validating if the current field's value is less than the param's value.
 func Lt(v reflect.Value, anotherField reflect.Value) bool {
 	if v.Kind() != anotherField.Kind() {
@@ -800,37 +822,39 @@ func RequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 
 func formatsMessages(validTag *ValidTag, v reflect.Value, f *field, o reflect.Value) error {
 	validator := newValidator()
-	if validator.Translator != nil {
-		message := validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
-		message = replaceAttributes(message, "", validTag.messageParameter)
-		if shouldReplaceRequiredWith(validTag.name) {
-			message = replaceRequiredWith(message, validTag.params, validator)
-		}
-		if shouldReplaceRequiredIf(validTag.name) {
-			message = replaceRequiredIf(message, o, validTag.params[0], validator)
-		}
+
+	var message string
+	var ok bool
+
+	if message, ok = validator.CustomMessage[f.structName+"."+validTag.messageName]; ok {
 		return fmt.Errorf(message)
 	}
 
-	if m, ok := validator.CustomMessage[f.structName+"."+validTag.messageName]; ok {
-		return fmt.Errorf(m)
+	if validator.Translator != nil {
+		message = validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
+		message = replaceAttributes(message, "", validTag.messageParameter)
+	} else {
+		message, ok = MessageMap[validTag.messageName]
+		if ok {
+			attribute := f.attribute
+			if customAttribute, ok := validator.Attributes[f.structName]; ok {
+				attribute = customAttribute
+			}
+			message = replaceAttributes(message, attribute, validTag.messageParameter)
+		}
 	}
 
-	message, ok := MessageMap[validTag.messageName]
-	if ok {
-		attribute := f.attribute
-		if customAttribute, ok := validator.Attributes[f.structName]; ok {
-			attribute = customAttribute
-		}
-
-		message = replaceAttributes(message, attribute, validTag.messageParameter)
-
+	if message != "" {
 		if shouldReplaceRequiredWith(validTag.name) {
 			message = replaceRequiredWith(message, validTag.params, validator)
 		}
 
 		if shouldReplaceRequiredIf(validTag.name) {
 			message = replaceRequiredIf(message, o, validTag.params[0], validator)
+		}
+
+		if validTag.name == "same" {
+			message = replaceSame(message, o, validTag.params[0], validator)
 		}
 
 		return fmt.Errorf(message)
@@ -886,7 +910,7 @@ func shouldReplaceRequiredWith(tag string) bool {
 	}
 }
 
-func replaceRequiredIf(message string, o reflect.Value, attribute string, validator *Validator) string {
+func getDisplayableAttribute(o reflect.Value, attribute string, validator *Validator) string {
 	attributes := strings.Split(attribute, ".")
 	if len(attributes) > 0 {
 		attribute = o.Type().Name() + attributes[0]
@@ -896,15 +920,25 @@ func replaceRequiredIf(message string, o reflect.Value, attribute string, valida
 
 	if validator.Translator != nil {
 		if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][attribute]; ok {
-			return strings.Replace(message, ":other", customAttribute, -1)
+			return customAttribute
 		}
 	}
 
 	if customAttribute, ok := validator.Attributes[attribute]; ok {
-		return strings.Replace(message, ":other", customAttribute, -1)
+		return customAttribute
 	}
 
-	return strings.Replace(message, ":other", attributes[len(attributes)-1], -1)
+	return attributes[len(attributes)-1]
+}
+
+func replaceSame(message string, o reflect.Value, attribute string, validator *Validator) string {
+	other := getDisplayableAttribute(o, attribute, validator)
+	return strings.Replace(message, ":other", other, -1)
+}
+
+func replaceRequiredIf(message string, o reflect.Value, attribute string, validator *Validator) string {
+	other := getDisplayableAttribute(o, attribute, validator)
+	return strings.Replace(message, ":other", other, -1)
 }
 
 func shouldReplaceRequiredIf(tag string) bool {
@@ -959,7 +993,7 @@ func checkDependentRules(validTag *ValidTag, f *field, v reflect.Value, o reflec
 	var anotherField reflect.Value
 	var err error
 	switch validTag.name {
-	case "gt", "gte", "lt", "lte":
+	case "gt", "gte", "lt", "lte", "same":
 		anotherField, err = findField(validTag.params[0], o)
 		if err != nil {
 			return nil
@@ -975,6 +1009,8 @@ func checkDependentRules(validTag *ValidTag, f *field, v reflect.Value, o reflec
 		isValid = Lt(v, anotherField)
 	case "lte":
 		isValid = Lte(v, anotherField)
+	case "same":
+		isValid = Same(v, anotherField)
 	}
 
 	if !isValid {
