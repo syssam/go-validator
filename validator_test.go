@@ -264,12 +264,12 @@ func TestMax(t *testing.T) {
 
 func TestMin(t *testing.T) {
 	type TestMinStruct struct {
-		String string            `valid:"min=5"`
-		Int    int               `valid:"min=5"`
-		Unit   uint              `valid:"min=5"`
-		Float  float64           `valid:"min=5.3"`
-		Array  []string          `valid:"min=5"`
-		Map    map[string]string `valid:"min=5"`
+		String string            `valid:"omitempty,min=5"`
+		Int    int               `valid:"omitempty,min=5"`
+		Unit   uint              `valid:"omitempty,min=5"`
+		Float  float64           `valid:"omitempty,min=5.3"`
+		Array  []string          `valid:"omitempty,min=5"`
+		Map    map[string]string `valid:"omitempty,min=5"`
 	}
 	var tests = []struct {
 		param    TestMinStruct
@@ -314,12 +314,12 @@ func TestMin(t *testing.T) {
 }
 func TestSize(t *testing.T) {
 	type TestSizeStruct struct {
-		String string            `valid:"size=5"`
-		Int    int               `valid:"size=5"`
-		Unit   uint              `valid:"size=5"`
-		Float  float64           `valid:"size=5.3"`
-		Array  []string          `valid:"size=5"`
-		Map    map[string]string `valid:"size=5"`
+		String string            `valid:"omitempty,size=5"`
+		Int    int               `valid:"omitempty,size=5"`
+		Unit   uint              `valid:"omitempty,size=5"`
+		Float  float64           `valid:"omitempty,size=5.3"`
+		Array  []string          `valid:"omitempty,size=5"`
+		Map    map[string]string `valid:"omitempty,size=5"`
 	}
 	var tests = []struct {
 		param    TestSizeStruct
@@ -365,11 +365,11 @@ func TestSize(t *testing.T) {
 
 func TestGt(t *testing.T) {
 	type GtStruct struct {
-		String         string `valid:"gt=GtStructString"`
+		String         string `valid:"omitempty,gt=GtStructString"`
 		GtStructString string
-		Number         int `valid:"gt=GtStructNumber"`
+		Number         int `valid:"omitempty,gt=GtStructNumber"`
 		GtStructNumber int
-		Array          []string `valid:"gt=GtStructArray"`
+		Array          []string `valid:"omitempty,gt=GtStructArray"`
 		GtStructArray  []string
 	}
 	var tests = []struct {
@@ -398,11 +398,11 @@ func TestGt(t *testing.T) {
 
 func TestGte(t *testing.T) {
 	type GteStruct struct {
-		String          string `valid:"gte=GteStructString"`
+		String          string `valid:"omitempty,gte=GteStructString"`
 		GteStructString string
-		Number          int `valid:"gte=GteStructNumber"`
+		Number          int `valid:"omitempty,gte=GteStructNumber"`
 		GteStructNumber int
-		Array           []string `valid:"gte=GteStructArray"`
+		Array           []string `valid:"omitempty,gte=GteStructArray"`
 		GteStructArray  []string
 	}
 	var tests = []struct {
@@ -434,8 +434,8 @@ func TestFieldsEmail(t *testing.T) {
 		param    FieldsEmail
 		expected bool
 	}{
-		{FieldsEmail{}, true},
-		{FieldsEmail{Email: ""}, true},
+		{FieldsEmail{}, false},
+		{FieldsEmail{Email: ""}, false},
 		{FieldsEmail{Email: "aaa"}, false},
 		{FieldsEmail{Email: "test@example.com"}, true},
 	}
