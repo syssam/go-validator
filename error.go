@@ -37,6 +37,7 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 		} else {
 			buff.WriteByte(',')
 		}
+		buff.WriteByte('{')
 		buff.WriteString(`"message":`)
 		buff.WriteByte('"')
 		buff.WriteString(e.Error())
@@ -46,6 +47,7 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 		buff.WriteByte('"')
 		buff.WriteString(e.(*Error).Name)
 		buff.WriteByte('"')
+		buff.WriteByte('}')
 	}
 	buff.WriteByte(']')
 	return buff.Bytes(), nil
