@@ -437,11 +437,11 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 
 			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
-				newJsonNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-				newJsonNamespace = append(append(newJsonNamespace, []byte(k.String())...), '.')
+				newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
+				newJSONNamespace = append(append(newJSONNamespace, []byte(k.String())...), '.')
 				newstructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
 				newstructNamespace = append(append(newstructNamespace, []byte(k.String())...), '.')
-				err = validateStruct(value.Interface(), newJsonNamespace, newstructNamespace)
+				err = validateStruct(value.Interface(), newJSONNamespace, newstructNamespace)
 				if err != nil {
 					return err
 				}
@@ -475,11 +475,11 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 
 			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
-				newJsonNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-				newJsonNamespace = append(append(newJsonNamespace, []byte(strconv.Itoa(i))...), '.')
+				newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
+				newJSONNamespace = append(append(newJSONNamespace, []byte(strconv.Itoa(i))...), '.')
 				newStructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
 				newStructNamespace = append(append(newStructNamespace, []byte(strconv.Itoa(i))...), '.')
-				err = validateStruct(v.Index(i).Interface(), newJsonNamespace, newStructNamespace)
+				err = validateStruct(v.Index(i).Interface(), newJSONNamespace, newStructNamespace)
 				if err != nil {
 					return err
 				}

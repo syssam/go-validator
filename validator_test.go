@@ -454,6 +454,10 @@ func TestFieldsEmail(t *testing.T) {
 
 func TestInnerStruct(t *testing.T) {
 	CustomTypeRuleMap.Set("languageCode", func(v reflect.Value, o reflect.Value, validTag *ValidTag) bool {
+		if v.Kind() != reflect.String {
+			return true
+		}
+
 		return false
 	})
 	MessageMap["languageCode"] = "Language Code is not valid."
@@ -484,12 +488,6 @@ func TestInnerStruct(t *testing.T) {
 	}
 
 	ValidateStruct(u)
-	/*
-		for _, e := range err.(Errors) {
-			fmt.Println(e.(*Error).Name)
-			fmt.Println(e.(*Error).StructName)
-		}
-	*/
 }
 
 func TestNameSpace(t *testing.T) {
@@ -520,10 +518,4 @@ func TestNameSpace(t *testing.T) {
 	}
 
 	ValidateStruct(u)
-	/*
-		for _, e := range err.(Errors) {
-			fmt.Println(e.(*Error).Name)
-			fmt.Println(e.(*Error).StructName)
-		}
-	*/
 }
