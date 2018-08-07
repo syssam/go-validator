@@ -18,13 +18,13 @@ type stringValues []reflect.Value
 type ValidateFunc func(v reflect.Value) bool
 
 // ParamValidateFunc is
-type ParamValidateFunc func(v reflect.Value, params ...string) bool
+type ParamValidateFunc func(v reflect.Value, params []string) bool
 
 // StringValidateFunc is
 type StringValidateFunc func(str string) bool
 
 // StringParamValidateFunc is
-type StringParamValidateFunc func(str string, params ...string) bool
+type StringParamValidateFunc func(str string, params []string) bool
 
 // CustomTypeValidateFunc is a wrapper for validator functions that returns bool.
 // first parameter is field value
@@ -54,7 +54,7 @@ func (tm *customTypeRuleMap) Set(name string, ctv CustomTypeValidateFunc) {
 }
 
 // RuleMap is a map of functions, that can be used as tags for ValidateStruct function.
-var RuleMap = map[string]ParamValidateFunc{}
+var RuleMap = map[string]ValidateFunc{}
 
 // ParamRuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var ParamRuleMap = map[string]ParamValidateFunc{

@@ -39,7 +39,7 @@ func newValidator() *Validator {
 }
 
 // Between check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
-func Between(v reflect.Value, params ...string) bool {
+func Between(v reflect.Value, params []string) bool {
 	if len(params) != 2 {
 		return false
 	}
@@ -71,7 +71,7 @@ func Between(v reflect.Value, params ...string) bool {
 }
 
 // DigitsBetween check The field under validation must have a length between the given min and max.
-func DigitsBetween(v reflect.Value, params ...string) bool {
+func DigitsBetween(v reflect.Value, params []string) bool {
 	if len(params) != 2 {
 		return false
 	}
@@ -104,7 +104,7 @@ func DigitsBetween(v reflect.Value, params ...string) bool {
 // For string data, value corresponds to the number of characters.
 // For numeric data, value corresponds to a given integer value.
 // For an array | map | slice, size corresponds to the count of the array | map | slice.
-func Size(v reflect.Value, param ...string) bool {
+func Size(v reflect.Value, param []string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
@@ -127,7 +127,7 @@ func Size(v reflect.Value, param ...string) bool {
 }
 
 // Max is the validation function for validating if the current field's value is less than or equal to the param's value.
-func Max(v reflect.Value, param ...string) bool {
+func Max(v reflect.Value, param []string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
@@ -150,7 +150,7 @@ func Max(v reflect.Value, param ...string) bool {
 }
 
 // Min is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func Min(v reflect.Value, param ...string) bool {
+func Min(v reflect.Value, param []string) bool {
 	switch v.Kind() {
 	case reflect.String:
 		p, _ := ToInt(param[0])
@@ -374,7 +374,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
-				isValid := validfunc(v, tag.params...)
+				isValid := validfunc(v, tag.params)
 				if !isValid {
 					return &Error{
 						Name:       name,
@@ -413,7 +413,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			}
 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
-				isValid := validfunc(v, tag.params...)
+				isValid := validfunc(v, tag.params)
 				if !isValid {
 					return &Error{
 						Name:       name,
@@ -451,7 +451,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				return err
 			}
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
-				isValid := validfunc(v, tag.params...)
+				isValid := validfunc(v, tag.params)
 				if !isValid {
 					return &Error{
 						Name:       name,
@@ -556,7 +556,7 @@ func RequiredIf(v reflect.Value, anotherField reflect.Value, params []string, ta
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherField)
-		if InString(value, params...) {
+		if InString(value, params) {
 			if Empty(v) {
 				if tag != nil {
 					if tag.messageParameter == nil {
@@ -586,7 +586,7 @@ func RequiredIf(v reflect.Value, anotherField reflect.Value, params []string, ta
 		}
 
 		for _, value := range values {
-			if InString(value, params...) {
+			if InString(value, params) {
 				if Empty(v) {
 					if tag != nil {
 						if tag.messageParameter == nil {
@@ -614,7 +614,7 @@ func RequiredIf(v reflect.Value, anotherField reflect.Value, params []string, ta
 		}
 
 		for _, value := range values {
-			if InString(value, params...) {
+			if InString(value, params) {
 				if Empty(v) {
 					if tag != nil {
 						if tag.messageParameter == nil {
@@ -634,7 +634,7 @@ func RequiredIf(v reflect.Value, anotherField reflect.Value, params []string, ta
 }
 
 // RequiredUnless check value required when anotherField str is a member of the set of strings params
-func RequiredUnless(v reflect.Value, anotherField reflect.Value, params ...string) bool {
+func RequiredUnless(v reflect.Value, anotherField reflect.Value, params []string) bool {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -650,7 +650,7 @@ func RequiredUnless(v reflect.Value, anotherField reflect.Value, params ...strin
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherField)
-		if !InString(value, params...) {
+		if !InString(value, params) {
 			if Empty(v) {
 				return false
 			}
@@ -674,7 +674,7 @@ func RequiredUnless(v reflect.Value, anotherField reflect.Value, params ...strin
 		}
 
 		for _, value := range values {
-			if !InString(value, params...) {
+			if !InString(value, params) {
 				if Empty(v) {
 					return false
 				}
@@ -696,7 +696,7 @@ func RequiredUnless(v reflect.Value, anotherField reflect.Value, params ...strin
 		}
 
 		for _, value := range values {
-			if !InString(value, params...) {
+			if !InString(value, params) {
 				if Empty(v) {
 					return false
 				}
@@ -750,7 +750,7 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 			}
 		case "requiredUnless":
 			anotherField, err := findField(tag.params[0], o)
-			if err == nil && len(tag.params) >= 2 && !RequiredUnless(v, anotherField, tag.params[1:]...) {
+			if err == nil && len(tag.params) >= 2 && !RequiredUnless(v, anotherField, tag.params[1:]) {
 				isError = true
 			}
 		case "requiredWith":

@@ -12,7 +12,7 @@ func BetweenString(v string, left int64, right int64) bool {
 }
 
 // InString check if string str is a member of the set of strings params
-func InString(str string, params ...string) bool {
+func InString(str string, params []string) bool {
 	for _, param := range params {
 		if str == param {
 			return true
