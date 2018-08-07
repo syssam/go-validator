@@ -491,3 +491,39 @@ func TestInnerStruct(t *testing.T) {
 		}
 	*/
 }
+
+func TestNameSpace(t *testing.T) {
+	type CreditCard struct {
+		Number           string
+		UserMemberNumber string `valid:"languageCode"`
+	}
+
+	type User struct {
+		MemberNumber string
+		CreditCards  []CreditCard `json:"CreditCards" valid:"languageCode"`
+	}
+
+	c := []CreditCard{
+		{
+			Number:           "1",
+			UserMemberNumber: "1",
+		},
+		{
+			Number:           "2",
+			UserMemberNumber: "2",
+		},
+	}
+
+	u := User{
+		MemberNumber: "MemberNumber",
+		CreditCards:  c,
+	}
+
+	ValidateStruct(u)
+	/*
+		for _, e := range err.(Errors) {
+			fmt.Println(e.(*Error).Name)
+			fmt.Println(e.(*Error).StructName)
+		}
+	*/
+}
