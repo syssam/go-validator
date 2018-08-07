@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -435,6 +436,9 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				value = value.Elem()
 			}
 
+			key := []byte(k.String())
+			jsonNamespace = append(append(jsonNamespace, key...), '.')
+
 			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
 				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
@@ -468,6 +472,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if value.Kind() == reflect.Interface {
 				value = value.Elem()
 			}
+			jsonNamespace = append(append(jsonNamespace, []byte(strconv.Itoa(i))...), '.')
 			if value.Kind() == reflect.Struct || value.Kind() == reflect.Ptr {
 				jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 				structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
