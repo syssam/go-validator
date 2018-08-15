@@ -57,3 +57,35 @@ func compareFloat64(first float64, second float64, operator string) bool {
 		panic(fmt.Sprintf("validator: compareFloat64 unsupport operator %s", operator))
 	}
 }
+
+func DistinctFloat32(v []float32) bool {
+	return inArrayFloat32(v, v)
+}
+
+func DistinctFloat64(v []float64) bool {
+	return inArrayFloat64(v, v)
+}
+
+func inArrayFloat32(needle []float32, haystack []float32) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func inArrayFloat64(needle []float64, haystack []float64) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}

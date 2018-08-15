@@ -118,7 +118,7 @@ func Size(v reflect.Value, param []string) bool {
 		return compareInt64(v.Int(), p, "==")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return compareUnit64(v.Uint(), p, "==")
+		return compareUint64(v.Uint(), p, "==")
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
 		return compareFloat64(v.Float(), p, "==")
@@ -141,7 +141,7 @@ func Max(v reflect.Value, param []string) bool {
 		return compareInt64(v.Int(), p, "<=")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return compareUnit64(v.Uint(), p, "<=")
+		return compareUint64(v.Uint(), p, "<=")
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
 		return compareFloat64(v.Float(), p, "<=")
@@ -164,7 +164,7 @@ func Min(v reflect.Value, param []string) bool {
 		return compareInt64(v.Int(), p, ">=")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		p, _ := ToUint(param[0])
-		return compareUnit64(v.Uint(), p, ">=")
+		return compareUint64(v.Uint(), p, ">=")
 	case reflect.Float32, reflect.Float64:
 		p, _ := ToFloat(param[0])
 		return compareFloat64(v.Float(), p, ">=")
@@ -187,7 +187,7 @@ func Same(v reflect.Value, anotherField reflect.Value) bool {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return compareInt64(v.Int(), anotherField.Int(), "==")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return compareUnit64(v.Uint(), anotherField.Uint(), "==")
+		return compareUint64(v.Uint(), anotherField.Uint(), "==")
 	case reflect.Float32, reflect.Float64:
 		return compareFloat64(v.Float(), anotherField.Float(), "==")
 	}
@@ -209,7 +209,7 @@ func Lt(v reflect.Value, anotherField reflect.Value) bool {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return compareInt64(v.Int(), anotherField.Int(), "<")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return compareUnit64(v.Uint(), anotherField.Uint(), "<")
+		return compareUint64(v.Uint(), anotherField.Uint(), "<")
 	case reflect.Float32, reflect.Float64:
 		return compareFloat64(v.Float(), anotherField.Float(), "<")
 	}
@@ -231,7 +231,7 @@ func Lte(v reflect.Value, anotherField reflect.Value) bool {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return compareInt64(v.Int(), anotherField.Int(), "<=")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return compareUnit64(v.Uint(), anotherField.Uint(), "<=")
+		return compareUint64(v.Uint(), anotherField.Uint(), "<=")
 	case reflect.Float32, reflect.Float64:
 		return compareFloat64(v.Float(), anotherField.Float(), "<=")
 	}
@@ -253,7 +253,7 @@ func Gt(v reflect.Value, anotherField reflect.Value) bool {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return compareInt64(v.Int(), anotherField.Int(), ">")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return compareUnit64(v.Uint(), anotherField.Uint(), ">")
+		return compareUint64(v.Uint(), anotherField.Uint(), ">")
 	case reflect.Float32, reflect.Float64:
 		return compareFloat64(v.Float(), anotherField.Float(), ">")
 	}
@@ -275,12 +275,49 @@ func Gte(v reflect.Value, anotherField reflect.Value) bool {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return compareInt64(v.Int(), anotherField.Int(), ">=")
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return compareUnit64(v.Uint(), anotherField.Uint(), ">=")
+		return compareUint64(v.Uint(), anotherField.Uint(), ">=")
 	case reflect.Float32, reflect.Float64:
 		return compareFloat64(v.Float(), anotherField.Float(), ">=")
 	}
 
 	panic(fmt.Sprintf("validator: Gte unsupport Type %T", v.Interface()))
+}
+
+func Distinct(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Slice, reflect.Map, reflect.Array:
+		typ := v.Elem()
+		switch typ.Kind() {
+		case reflect.String:
+			DistinctString(v.Interface().([]string))
+		case reflect.Int:
+			DistinctInt(v.Interface().([]int))
+		case reflect.Int8:
+			DistinctInt8(v.Interface().([]int8))
+		case reflect.Int16:
+			DistinctInt16(v.Interface().([]int16))
+		case reflect.Int32:
+			DistinctInt32(v.Interface().([]int32))
+		case reflect.Int64:
+			DistinctInt64(v.Interface().([]int64))
+		case reflect.Float32:
+			DistinctFloat32(v.Interface().([]float32))
+		case reflect.Float64:
+			DistinctFloat64(v.Interface().([]float64))
+		case reflect.Uint:
+			DistinctUint(v.Interface().([]uint))
+		case reflect.Uint8:
+			DistinctUint8(v.Interface().([]uint8))
+		case reflect.Uint16:
+			DistinctUint16(v.Interface().([]uint16))
+		case reflect.Uint32:
+			DistinctUint32(v.Interface().([]uint32))
+		case reflect.Uint64:
+			DistinctUint64(v.Interface().([]uint64))
+		}
+	}
+
+	panic(fmt.Sprintf("validator: Distinct unsupport Type %T", v.Interface()))
 }
 
 func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
@@ -952,18 +989,6 @@ func shouldReplaceRequiredIf(tag string) bool {
 	default:
 		return false
 	}
-}
-
-func inArray(needle []string, haystack []string) bool {
-	for _, n := range needle {
-		for _, s := range haystack {
-			if n == s {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func findField(fieldName string, v reflect.Value) (reflect.Value, error) {

@@ -10,8 +10,8 @@ func DigitsBetweenUint64(value, left, right uint64) bool {
 	return value >= left && value <= right
 }
 
-//  compareUnit64 determine if a comparison passes between the given values.
-func compareUnit64(first uint64, second uint64, operator string) bool {
+//  compareUint64 determine if a comparison passes between the given values.
+func compareUint64(first uint64, second uint64, operator string) bool {
 	switch operator {
 	case "<":
 		return first < second
@@ -24,6 +24,86 @@ func compareUnit64(first uint64, second uint64, operator string) bool {
 	case "==":
 		return first == second
 	default:
-		panic(fmt.Sprintf("validator: compareUnit64 unsupport operator %s", operator))
+		panic(fmt.Sprintf("validator: compareUint64 unsupport operator %s", operator))
 	}
+}
+
+func DistinctUint(v []uint) bool {
+	return inArrayUint(v, v)
+}
+
+func DistinctUint8(v []uint8) bool {
+	return inArrayUint8(v, v)
+}
+
+func DistinctUint16(v []uint16) bool {
+	return inArrayUint16(v, v)
+}
+
+func DistinctUint32(v []uint32) bool {
+	return inArrayUint32(v, v)
+}
+
+func DistinctUint64(v []uint64) bool {
+	return inArrayUint64(v, v)
+}
+
+func inArrayUint(needle []uint, haystack []uint) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func inArrayUint8(needle []uint8, haystack []uint8) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func inArrayUint16(needle []uint16, haystack []uint16) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func inArrayUint32(needle []uint32, haystack []uint32) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func inArrayUint64(needle []uint64, haystack []uint64) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
 }

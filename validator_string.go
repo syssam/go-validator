@@ -140,3 +140,19 @@ func IsIP(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil
 }
+
+func DistinctString(v []string) bool {
+	return inArrayString(v, v)
+}
+
+func inArrayString(needle []string, haystack []string) bool {
+	for _, n := range needle {
+		for _, s := range haystack {
+			if n == s {
+				return true
+			}
+		}
+	}
+
+	return false
+}
