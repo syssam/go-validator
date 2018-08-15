@@ -28,22 +28,27 @@ func compareUint64(first uint64, second uint64, operator string) bool {
 	}
 }
 
+// DistinctUint is the validation function for validating an attribute is unique among other values.
 func DistinctUint(v []uint) bool {
 	return inArrayUint(v, v)
 }
 
+// DistinctUint8 is the validation function for validating an attribute is unique among other values.
 func DistinctUint8(v []uint8) bool {
 	return inArrayUint8(v, v)
 }
 
+// DistinctUint16 is the validation function for validating an attribute is unique among other values.
 func DistinctUint16(v []uint16) bool {
 	return inArrayUint16(v, v)
 }
 
+// DistinctUint32 is the validation function for validating an attribute is unique among other values.
 func DistinctUint32(v []uint32) bool {
 	return inArrayUint32(v, v)
 }
 
+// DistinctUint64 is the validation function for validating an attribute is unique among other values.
 func DistinctUint64(v []uint64) bool {
 	return inArrayUint64(v, v)
 }

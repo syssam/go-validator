@@ -283,37 +283,38 @@ func Gte(v reflect.Value, anotherField reflect.Value) bool {
 	panic(fmt.Sprintf("validator: Gte unsupport Type %T", v.Interface()))
 }
 
+// Distinct is the validation function for validating an attribute is unique among other values.
 func Distinct(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Slice, reflect.Map, reflect.Array:
 		typ := v.Elem()
 		switch typ.Kind() {
 		case reflect.String:
-			DistinctString(v.Interface().([]string))
+			return DistinctString(v.Interface().([]string))
 		case reflect.Int:
-			DistinctInt(v.Interface().([]int))
+			return DistinctInt(v.Interface().([]int))
 		case reflect.Int8:
-			DistinctInt8(v.Interface().([]int8))
+			return DistinctInt8(v.Interface().([]int8))
 		case reflect.Int16:
-			DistinctInt16(v.Interface().([]int16))
+			return DistinctInt16(v.Interface().([]int16))
 		case reflect.Int32:
-			DistinctInt32(v.Interface().([]int32))
+			return DistinctInt32(v.Interface().([]int32))
 		case reflect.Int64:
-			DistinctInt64(v.Interface().([]int64))
+			return DistinctInt64(v.Interface().([]int64))
 		case reflect.Float32:
-			DistinctFloat32(v.Interface().([]float32))
+			return DistinctFloat32(v.Interface().([]float32))
 		case reflect.Float64:
-			DistinctFloat64(v.Interface().([]float64))
+			return DistinctFloat64(v.Interface().([]float64))
 		case reflect.Uint:
-			DistinctUint(v.Interface().([]uint))
+			return DistinctUint(v.Interface().([]uint))
 		case reflect.Uint8:
-			DistinctUint8(v.Interface().([]uint8))
+			return DistinctUint8(v.Interface().([]uint8))
 		case reflect.Uint16:
-			DistinctUint16(v.Interface().([]uint16))
+			return DistinctUint16(v.Interface().([]uint16))
 		case reflect.Uint32:
-			DistinctUint32(v.Interface().([]uint32))
+			return DistinctUint32(v.Interface().([]uint32))
 		case reflect.Uint64:
-			DistinctUint64(v.Interface().([]uint64))
+			return DistinctUint64(v.Interface().([]uint64))
 		}
 	}
 

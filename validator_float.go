@@ -58,10 +58,12 @@ func compareFloat64(first float64, second float64, operator string) bool {
 	}
 }
 
+// DistinctFloat32 is the validation function for validating an attribute is unique among other values.
 func DistinctFloat32(v []float32) bool {
 	return inArrayFloat32(v, v)
 }
 
+// DistinctFloat64 is the validation function for validating an attribute is unique among other values.
 func DistinctFloat64(v []float64) bool {
 	return inArrayFloat64(v, v)
 }

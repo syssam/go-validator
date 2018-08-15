@@ -54,7 +54,9 @@ func (tm *customTypeRuleMap) Set(name string, ctv CustomTypeValidateFunc) {
 }
 
 // RuleMap is a map of functions, that can be used as tags for ValidateStruct function.
-var RuleMap = map[string]ValidateFunc{}
+var RuleMap = map[string]ValidateFunc{
+	"distinct": Distinct,
+}
 
 // ParamRuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var ParamRuleMap = map[string]ParamValidateFunc{
