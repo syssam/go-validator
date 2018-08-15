@@ -362,6 +362,10 @@ func ValidateStruct(s interface{}) error {
 	return validateStruct(s, nil, nil)
 }
 
+func (v *Validator) ValidateStruct(s interface{}) error {
+	return validateStruct(s, nil, nil)
+}
+
 func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
 	if !v.IsValid() || f.omitEmpty && Empty(v) {
 		return nil
