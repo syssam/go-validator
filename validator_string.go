@@ -143,7 +143,7 @@ func IsIP(v string) bool {
 
 // DistinctString is the validation function for validating an attribute is unique among other values.
 func DistinctString(v []string) bool {
-	return inArrayString(v, v)
+	return !inArrayString(v, v)
 }
 
 func inArrayString(needle []string, haystack []string) bool {

@@ -30,27 +30,27 @@ func compareInt64(first int64, second int64, operator string) bool {
 
 // DistinctInt is the validation function for validating an attribute is unique among other values.
 func DistinctInt(v []int) bool {
-	return inArrayInt(v, v)
+	return !inArrayInt(v, v)
 }
 
 // DistinctInt8 is the validation function for validating an attribute is unique among other values.
 func DistinctInt8(v []int8) bool {
-	return inArrayInt8(v, v)
+	return !inArrayInt8(v, v)
 }
 
 // DistinctInt16 is the validation function for validating an attribute is unique among other values.
 func DistinctInt16(v []int16) bool {
-	return inArrayInt16(v, v)
+	return !inArrayInt16(v, v)
 }
 
 // DistinctInt32 is the validation function for validating an attribute is unique among other values.
 func DistinctInt32(v []int32) bool {
-	return inArrayInt32(v, v)
+	return !inArrayInt32(v, v)
 }
 
 // DistinctInt64 is the validation function for validating an attribute is unique among other values.
 func DistinctInt64(v []int64) bool {
-	return inArrayInt64(v, v)
+	return !inArrayInt64(v, v)
 }
 
 func inArrayInt(needle []int, haystack []int) bool {

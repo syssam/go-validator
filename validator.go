@@ -286,35 +286,38 @@ func Gte(v reflect.Value, anotherField reflect.Value) bool {
 // Distinct is the validation function for validating an attribute is unique among other values.
 func Distinct(v reflect.Value) bool {
 	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64:
+		return true
 	case reflect.Slice, reflect.Map, reflect.Array:
-		typ := v.Elem()
-		switch typ.Kind() {
-		case reflect.String:
-			return DistinctString(v.Interface().([]string))
-		case reflect.Int:
-			return DistinctInt(v.Interface().([]int))
-		case reflect.Int8:
-			return DistinctInt8(v.Interface().([]int8))
-		case reflect.Int16:
-			return DistinctInt16(v.Interface().([]int16))
-		case reflect.Int32:
-			return DistinctInt32(v.Interface().([]int32))
-		case reflect.Int64:
-			return DistinctInt64(v.Interface().([]int64))
-		case reflect.Float32:
-			return DistinctFloat32(v.Interface().([]float32))
-		case reflect.Float64:
-			return DistinctFloat64(v.Interface().([]float64))
-		case reflect.Uint:
-			return DistinctUint(v.Interface().([]uint))
-		case reflect.Uint8:
-			return DistinctUint8(v.Interface().([]uint8))
-		case reflect.Uint16:
-			return DistinctUint16(v.Interface().([]uint16))
-		case reflect.Uint32:
-			return DistinctUint32(v.Interface().([]uint32))
-		case reflect.Uint64:
-			return DistinctUint64(v.Interface().([]uint64))
+		switch value := v.Interface().(type) {
+		case []string:
+			return DistinctString(value)
+		case []int:
+			return DistinctInt(value)
+		case []int8:
+			return DistinctInt8(value)
+		case []int16:
+			return DistinctInt16(value)
+		case []int32:
+			return DistinctInt32(value)
+		case []int64:
+			return DistinctInt64(value)
+		case []float32:
+			return DistinctFloat32(value)
+		case []float64:
+			return DistinctFloat64(value)
+		case []uint:
+			return DistinctUint(value)
+		case []uint8:
+			return DistinctUint8(value)
+		case []uint16:
+			return DistinctUint16(value)
+		case []uint32:
+			return DistinctUint32(value)
+		case []uint64:
+			return DistinctUint64(value)
 		}
 	}
 
@@ -451,6 +454,18 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				return err
 			}
 
+			if validfunc, ok := RuleMap[tag.name]; ok {
+				isValid := validfunc(v)
+				if !isValid {
+					return &Error{
+						Name:       name,
+						StructName: structName,
+						Err:        formatsMessages(tag, v, f, o),
+						Tag:        tag.name,
+					}
+				}
+			}
+
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params)
 				if !isValid {
@@ -490,6 +505,18 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		for _, tag := range f.validTags {
 			if err := checkDependentRules(tag, f, v, o, name, structName); err != nil {
 				return err
+			}
+
+			if validfunc, ok := RuleMap[tag.name]; ok {
+				isValid := validfunc(v)
+				if !isValid {
+					return &Error{
+						Name:       name,
+						StructName: structName,
+						Err:        formatsMessages(tag, v, f, o),
+						Tag:        tag.name,
+					}
+				}
 			}
 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
