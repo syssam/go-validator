@@ -36,6 +36,7 @@
     <li><a>gte</a></li>
     <li><a>lt</a></li>
     <li><a>lte</a></li>
+    <li><a>distinct</a></li>
     <li><a>email</a></li>
     <li><a>alpha</a></li>
     <li><a>alphaNum</a></li>
@@ -95,6 +96,8 @@
 <p>The field under validation must be less than the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
 <h4 id="rule-lte">lte=anotherfield</h4>
 <p>The field under validation must be less than or equal to the given field. The two fields must be of the same type. String, Number, Array, Map are evaluated using the same conventions as the size rule.</p>
+<h4 id="rule-distinct">distinct</h4>
+<p>The field under validation must not have any duplicate values.</p>
 <h4 id="rule-email">email</h4>
 <p>The field under validation must be formatted as an e-mail address.</p>
 <h4 id="rule-alpha">alpha</h4>
@@ -132,9 +135,26 @@
 <h2>List of functions:</h2>
 <div class="highlight highlight-source-go">
   <pre>
-    IsRequiredIf(v reflect.Value, anotherfield reflect.Value, params ...string)
-    IsIn(str string, params ...string) bool 
-    IsEmail(str string) bool
-    Between(v reflect.Value, params ...string) bool
+    IsNumeric(str string) bool
+    IsInt(str string) bool
+    IsInt(str string) bool
+    IsFloat(str string) bool
+    IsNull(str string) bool
+  	ValidateBetween(i interface{}, params []string) bool
+    ValidateDigitsBetween(i interface{}, params []string) bool
+    ValidateMin(i interface{}, params []string) bool
+    ValidateMax(i interface{}, params []string) bool
+    ValidateSize(i interface{}, params []string) bool
+	  ValidateDistinct(i interface{}) bool
+    ValidateEmail(str string) bool
+    ValidateAlpha(str string) bool
+    ValidateAlphaNum(str string) bool
+    ValidateAlphaDash(str string) bool
+    ValidateAlphaUnicode(str string) bool
+    ValidateAlphaNumUnicode(str string) bool
+    ValidateAlphaDashUnicode(str string) bool
+    ValidateIP(str string) bool
+    ValidateIPv4(str string) bool
+    ValidateIPv6(str string) bool
   </pre>
 </div>

@@ -452,6 +452,18 @@ func TestFieldsEmail(t *testing.T) {
 	}
 }
 
+func TestDistinct(t *testing.T) {
+	var result bool
+	result = ValidateDistinct([]string{"zh-HK", "zh-CN"})
+	if result != true {
+		t.Errorf("Got Error on validateateStruct case 1 %v, got %v", true, result)
+	}
+	result = ValidateDistinct([]string{"zh-HK", "zh-CN", "zh-CN"})
+	if result != false {
+		t.Errorf("Got Error on validateateStruct case 2 %v, got %v", false, result)
+	}
+}
+
 func TestInnerStruct(t *testing.T) {
 	CustomTypeRuleMap.Set("languageCode", func(v reflect.Value, o reflect.Value, validTag *ValidTag) bool {
 		if v.Kind() != reflect.String {

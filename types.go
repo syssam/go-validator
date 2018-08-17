@@ -55,32 +55,32 @@ func (tm *customTypeRuleMap) Set(name string, ctv CustomTypeValidateFunc) {
 
 // RuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var RuleMap = map[string]ValidateFunc{
-	"distinct": Distinct,
+	"distinct": validateDistinct,
 }
 
 // ParamRuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var ParamRuleMap = map[string]ParamValidateFunc{
-	"between":       Between,
-	"digitsBetween": DigitsBetween,
-	"min":           Min,
-	"max":           Max,
-	"size":          Size,
+	"between":       validateBetween,
+	"digitsBetween": validateDigitsBetween,
+	"min":           validateMin,
+	"max":           validateMax,
+	"size":          validateSize,
 }
 
 // StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when refelect type is string.
 var StringRulesMap = map[string]StringValidateFunc{
-	"email":            IsEmail,
-	"alpha":            IsAlpha,
-	"alphaNum":         IsAlphaNum,
-	"alphaDash":        IsAlphaDash,
-	"alphaUnicode":     IsAlphaUnicode,
-	"alphaNumUnicode":  IsAlphaNumUnicode,
-	"alphaDashUnicode": IsAlphaDashUnicode,
 	"numeric":          IsNumeric,
 	"int":              IsInt,
 	"integer":          IsInt,
 	"float":            IsFloat,
-	"ip":               IsIP,
-	"ipv4":             IsIPv4,
-	"ipv6":             IsIPv6,
+	"email":            ValidateEmail,
+	"alpha":            ValidateAlpha,
+	"alphaNum":         ValidateAlphaNum,
+	"alphaDash":        ValidateAlphaDash,
+	"alphaUnicode":     ValidateAlphaUnicode,
+	"alphaNumUnicode":  ValidateAlphaNumUnicode,
+	"alphaDashUnicode": ValidateAlphaDashUnicode,
+	"ip":               ValidateIP,
+	"ipv4":             ValidateIPv4,
+	"ipv6":             ValidateIPv6,
 }

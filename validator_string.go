@@ -6,9 +6,9 @@ import (
 	"unicode/utf8"
 )
 
-// BetweenString is
-func BetweenString(v string, left int64, right int64) bool {
-	return DigitsBetweenInt64(int64(utf8.RuneCountInString(v)), left, right)
+// ValidateBetweenString is
+func ValidateBetweenString(v string, left int64, right int64) bool {
+	return ValidateDigitsBetweenInt64(int64(utf8.RuneCountInString(v)), left, right)
 }
 
 // InString check if string str is a member of the set of strings params
@@ -40,54 +40,6 @@ func compareString(first string, second int64, operator string) bool {
 	}
 }
 
-// IsAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
-func IsAlpha(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlpha.MatchString(str)
-}
-
-// IsAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
-func IsAlphaNum(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaNum.MatchString(str)
-}
-
-// IsAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
-func IsAlphaDash(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaDash.MatchString(str)
-}
-
-// IsAlphaUnicode check if the string may be only contains letters (a-zA-Z). Empty string is valid.
-func IsAlphaUnicode(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaUnicode.MatchString(str)
-}
-
-// IsAlphaNumUnicode check if the string may be only contains letters and numbers. Empty string is valid.
-func IsAlphaNumUnicode(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaNumUnicode.MatchString(str)
-}
-
-// IsAlphaDashUnicode check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
-func IsAlphaDashUnicode(str string) bool {
-	if IsNull(str) {
-		return true
-	}
-	return rxAlphaDashUnicode.MatchString(str)
-}
-
 // IsNumeric check if the string must be numeric. Empty string is valid.
 func IsNumeric(str string) bool {
 	if IsNull(str) {
@@ -117,43 +69,74 @@ func IsNull(str string) bool {
 	return len(str) == 0
 }
 
-// IsEmail check if the string is an email.
-func IsEmail(str string) bool {
+// ValidateEmail check if the string is an email.
+func ValidateEmail(str string) bool {
 	// TODO uppercase letters are not supported
 	return rxEmail.MatchString(str)
 }
 
-// IsIPv4 check if the string is an ipv4 address.
-func IsIPv4(v string) bool {
-	ip := net.ParseIP(v)
-	return ip != nil && ip.To4() != nil
+// ValidateAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
+func ValidateAlpha(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlpha.MatchString(str)
 }
 
-// IsIPv6 check if the string is an ipv6 address.
-func IsIPv6(v string) bool {
-	ip := net.ParseIP(v)
-	return ip != nil && ip.To4() == nil
+// ValidateAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
+func ValidateAlphaNum(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaNum.MatchString(str)
 }
 
-// IsIP check if the string is an ip address.
-func IsIP(v string) bool {
+// ValidateAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
+func ValidateAlphaDash(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaDash.MatchString(str)
+}
+
+// ValidateAlphaUnicode check if the string may be only contains letters (a-zA-Z). Empty string is valid.
+func ValidateAlphaUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaUnicode.MatchString(str)
+}
+
+// ValidateAlphaNumUnicode check if the string may be only contains letters and numbers. Empty string is valid.
+func ValidateAlphaNumUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaNumUnicode.MatchString(str)
+}
+
+// ValidateAlphaDashUnicode check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
+func ValidateAlphaDashUnicode(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxAlphaDashUnicode.MatchString(str)
+}
+
+// ValidateIP check if the string is an ip address.
+func ValidateIP(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil
 }
 
-// DistinctString is the validation function for validating an attribute is unique among other values.
-func DistinctString(v []string) bool {
-	return !inArrayString(v, v)
+// ValidateIPv4 check if the string is an ipv4 address.
+func ValidateIPv4(v string) bool {
+	ip := net.ParseIP(v)
+	return ip != nil && ip.To4() != nil
 }
 
-func inArrayString(needle []string, haystack []string) bool {
-	for _, n := range needle {
-		for _, s := range haystack {
-			if n == s {
-				return true
-			}
-		}
-	}
-
-	return false
+// ValidateIPv6 check if the string is an ipv6 address.
+func ValidateIPv6(v string) bool {
+	ip := net.ParseIP(v)
+	return ip != nil && ip.To4() == nil
 }
