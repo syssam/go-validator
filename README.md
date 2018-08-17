@@ -140,12 +140,12 @@
     IsInt(str string) bool
     IsFloat(str string) bool
     IsNull(str string) bool
-  	ValidateBetween(i interface{}, params []string) bool
+    ValidateBetween(i interface{}, params []string) bool
     ValidateDigitsBetween(i interface{}, params []string) bool
     ValidateMin(i interface{}, params []string) bool
     ValidateMax(i interface{}, params []string) bool
     ValidateSize(i interface{}, params []string) bool
-	  ValidateDistinct(i interface{}) bool
+    ValidateDistinct(i interface{}) bool
     ValidateEmail(str string) bool
     ValidateAlpha(str string) bool
     ValidateAlphaNum(str string) bool
