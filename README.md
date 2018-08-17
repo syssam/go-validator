@@ -14,6 +14,7 @@
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/simple">Simple</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/translations">Translations</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/gin">Gin</a></li>
+  <li><a href="https://github.com/syssam/go-validator/tree/master/examples/echo">Echo</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/examples/custom">Custom Validation Rules</a></li>
 </ul>
 <h2>Available Validation Rules</h2>
