@@ -12,16 +12,19 @@ type User struct {
 	Email string `json:"email" valid:"required,email"`
 }
 
+var validate *validator.Validator
+
 func main() {
 	app := iris.New()
+	validate = validator.New()
+
 	app.Post("/user", func(c iris.Context) {
 		var user User
 		if err := c.ReadJSON(&user); err != nil {
 			// Handle error.
 		}
 
-		err := validator.ValidateStruct(user)
-		if err != nil {
+		if err := validator.ValidateStruct(user); err != nil {
 			c.StatusCode(http.StatusBadRequest)
 			c.JSON(err)
 			return

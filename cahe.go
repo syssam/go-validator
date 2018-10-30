@@ -49,7 +49,7 @@ func cachedTypefields(t reflect.Type) []field {
 	return f.([]field)
 }
 
-// typefields returns a list of fields that JSON should recognize for the given type.
+// typefields returns a list of fields that Validator should recognize for the given type.
 // The algorithm is breadth-first search over the set of structs to include - the top struct
 // and then any reachable anonymous structs.
 func typefields(t reflect.Type) []field {
