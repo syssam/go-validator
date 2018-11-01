@@ -2,12 +2,13 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	validator "github.com/syssam/go-validator"
-	lang_en "github.com/syssam/go-validator/examples/translations/lang/en"
-	lang_zhCN "github.com/syssam/go-validator/examples/translations/lang/zh_CN"
+	lang_en "github.com/syssam/go-validator/_examples/translations/lang/en"
+	lang_zhCN "github.com/syssam/go-validator/_examples/translations/lang/zh_CN"
 	validator_en "github.com/syssam/go-validator/lang/en"
 	validator_zhCN "github.com/syssam/go-validator/lang/zh_CN"
 )
@@ -18,6 +19,29 @@ type User struct {
 	LastName  string `valid:"required"`
 	Age       uint8  `valid:"between=0|30"`
 	Email     string `valid:"required,email"`
+}
+
+type appError struct {
+	Code    int              `json:"code,omitempty"`
+	Errors  validator.Errors `json:"errors,omitempty"`
+	Message string           `json:"message,omitempty"`
+}
+
+// ErrorResponse return error
+func ErrorResponse(c *gin.Context, code int, err error) {
+	switch v := err.(type) {
+	case validator.Errors:
+		c.JSON(http.StatusBadRequest, gin.H{"error": &appError{
+			Code:   http.StatusBadRequest,
+			Errors: v,
+		}})
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": &appError{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}})
+	}
+	return
 }
 
 func init() {
@@ -41,6 +65,7 @@ func LocalizationMiddleware() gin.HandlerFunc {
 		locale := c.DefaultQuery("locale", "en")
 		if v, ok := binding.Validator.Engine().(*validator.Validator); ok {
 			v.Translator.SetLocale(locale)
+			time.Sleep(time.Duration(5) * time.Second)
 		}
 		c.Next()
 	}
@@ -54,11 +79,7 @@ func main() {
 		if err := c.ShouldBind(&form); err == nil {
 			c.JSON(http.StatusOK, &form)
 		} else {
-			if err.(validator.Errors) != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": err.(validator.Errors)})
-				return
-			}
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ErrorResponse(c, http.StatusBadRequest, err)
 		}
 	})
 	r.Run() // listen and serve on 0.0.0.0:8080

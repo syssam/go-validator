@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	validator "github.com/syssam/go-validator"
-	lang_en "github.com/syssam/go-validator/examples/translations/lang/en"
-	lang_zh_CN "github.com/syssam/go-validator/examples/translations/lang/zh_CN"
+	lang_en "github.com/syssam/go-validator/_examples/translations/lang/en"
+	lang_zh_CN "github.com/syssam/go-validator/_examples/translations/lang/zh_CN"
 	validator_en "github.com/syssam/go-validator/lang/en"
 	validator_zh_CN "github.com/syssam/go-validator/lang/zh_CN"
 )
