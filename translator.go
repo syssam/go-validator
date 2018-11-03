@@ -69,18 +69,20 @@ func (t *Translator) SetAttributes(langCode string, messages Translate) {
 
 // Trans trans
 func (t *Translator) Trans(structName string, messageName string, attribute string) string {
-	if m, ok := t.customMessage[t.locale][structName+"."+messageName]; ok {
+	locale := t.GetLocale()
+
+	if m, ok := t.customMessage[locale][structName+"."+messageName]; ok {
 		return m
 	}
 
-	message, ok := t.messages[t.locale][messageName]
+	message, ok := t.messages[locale][messageName]
 	if ok {
-		if customAttribute, ok := t.attributes[t.locale][structName]; ok {
+		if customAttribute, ok := t.attributes[locale][structName]; ok {
 			attribute = customAttribute
 		}
 
 		return strings.Replace(message, ":attribute", attribute, -1)
 	}
 
-	panic(fmt.Sprintf("validator: Trans undefined message %s on locale %s", messageName, t.locale))
+	panic(fmt.Sprintf("validator: Trans undefined message %s on locale %s", messageName, locale))
 }

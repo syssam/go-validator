@@ -1018,7 +1018,8 @@ func replaceRequiredWith(message string, attributes []string, validator *Validat
 		}
 
 		if validator.Translator != nil {
-			if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][v]; ok {
+			locale := validator.Translator.GetLocale()
+			if customAttribute, ok := validator.Translator.attributes[locale][v]; ok {
 				buff.WriteString(customAttribute)
 				continue
 			}
@@ -1053,7 +1054,8 @@ func getDisplayableAttribute(o reflect.Value, attribute string, validator *Valid
 	}
 
 	if validator.Translator != nil {
-		if customAttribute, ok := validator.Translator.attributes[validator.Translator.locale][attribute]; ok {
+		locale := validator.Translator.GetLocale()
+		if customAttribute, ok := validator.Translator.attributes[locale][attribute]; ok {
 			return customAttribute
 		}
 	}
