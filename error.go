@@ -45,7 +45,7 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 		buff.WriteByte(',')
 		buff.WriteString(`"parameter":`)
 		buff.WriteByte('"')
-		buff.WriteString(e.(*Error).Name)
+		buff.WriteString(e.(*FieldError).name)
 		buff.WriteByte('"')
 		buff.WriteByte('}')
 	}
@@ -53,6 +53,7 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 	return buff.Bytes(), nil
 }
 
+/*
 // Error encapsulates a name, an error and whether there's a custom error message or not.
 type Error struct {
 	Name       string
@@ -65,4 +66,21 @@ type Error struct {
 
 func (e Error) Error() string {
 	return e.Err.Error()
+}
+*/
+
+// FieldError encapsulates name, message, and value etc.
+type FieldError struct {
+	name              string
+	structName        string
+	tag               string // Tag indicates the name of the validator that failed
+	messageName       string
+	messageParameters messageParameters
+	attribute         string
+	value             string
+	err               error
+}
+
+func (fe *FieldError) Error() string {
+	return fe.err.Error()
 }

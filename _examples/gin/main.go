@@ -31,9 +31,10 @@ type appError struct {
 func ErrorResponse(c *gin.Context, code int, err error) {
 	switch v := err.(type) {
 	case validator.Errors:
+		locale := c.DefaultQuery("locale", "en")
 		c.JSON(http.StatusBadRequest, gin.H{"error": &appError{
 			Code:   http.StatusBadRequest,
-			Errors: v,
+			Errors: binding.Validator.Engine().(*validator.Validator).Translator.Trans(v, locale),
 		}})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": &appError{
@@ -54,27 +55,13 @@ func init() {
 		v.Translator.SetMessage("zh_CN", validator_zhCN.MessageMap)
 		v.Translator.SetAttributes("en", lang_en.AttributeMap)
 		v.Translator.SetAttributes("zh_CN", lang_zhCN.AttributeMap)
-		v.Translator.SetLocale("zh_CN")
-	}
-
-}
-
-// LocalizationMiddleware init
-func LocalizationMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		locale := c.DefaultQuery("locale", "en")
-		if v, ok := binding.Validator.Engine().(*validator.Validator); ok {
-			v.Translator.SetLocale(locale)
-			time.Sleep(time.Duration(5) * time.Second)
-		}
-		c.Next()
 	}
 }
 
 func main() {
 	r := gin.Default()
-	r.Use(LocalizationMiddleware())
 	r.POST("/", func(c *gin.Context) {
+		time.Sleep(time.Duration(5) * time.Second)
 		var form User
 		if err := c.ShouldBind(&form); err == nil {
 			c.JSON(http.StatusOK, &form)

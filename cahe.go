@@ -26,10 +26,10 @@ type field struct {
 
 // A ValidTag represents parse validTag into field struct.
 type ValidTag struct {
-	name             string
-	params           []string
-	messageName      string
-	messageParameter messageParameterMap
+	name              string
+	params            []string
+	messageName       string
+	messageParameters messageParameters
 }
 
 // A otherValidTags represents parse validTag into field struct when validTag is not required...
@@ -94,7 +94,7 @@ func typefields(t reflect.Type) []field {
 				}
 				validTag := sf.Tag.Get(tagName)
 				name := sf.Tag.Get("json")
-				if !isvalidTag(name) {
+				if !f.isvalidTag(name) {
 					name = ""
 				}
 				if validTag == "-" || validTag == "" {
@@ -118,7 +118,7 @@ func typefields(t reflect.Type) []field {
 						name = sf.Name
 					}
 
-					requiredTags, otherValidTags := parseTagIntoArray(validTag, ft)
+					requiredTags, otherValidTags := f.parseTagIntoSlice(validTag, ft)
 
 					fields = append(fields, field{
 						name:            name,
@@ -148,7 +148,7 @@ func typefields(t reflect.Type) []field {
 				// Record new anonymous struct to explore in next round.
 				nextCount[ft]++
 				if nextCount[ft] == 1 {
-					requiredTags, otherValidTags := parseTagIntoArray(validTag, ft)
+					requiredTags, otherValidTags := f.parseTagIntoSlice(validTag, ft)
 
 					next = append(next, field{
 						name:            sf.Name,
@@ -170,7 +170,7 @@ func typefields(t reflect.Type) []field {
 	return fields
 }
 
-func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTags) {
+func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags) {
 	options := strings.Split(tag, ",")
 	var otherValidTags otherValidTags
 	var requiredTags requiredTags
@@ -178,7 +178,7 @@ func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTag
 	for _, option := range options {
 		option = strings.TrimSpace(option)
 
-		if !isvalidTag(option) {
+		if !f.isvalidTag(option) {
 			continue
 		}
 
@@ -192,25 +192,25 @@ func parseTagIntoArray(tag string, ft reflect.Type) (requiredTags, otherValidTag
 		switch tag[0] {
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
 			requiredTags = append(requiredTags, &ValidTag{
-				name:             tag[0],
-				params:           params,
-				messageName:      parseMessageName(tag[0], ft),
-				messageParameter: parseMessageParameterIntoMap(tag[0], params...),
+				name:              tag[0],
+				params:            params,
+				messageName:       f.parseMessageName(tag[0], ft),
+				messageParameters: f.parseMessageParameterIntoSlice(tag[0], params...),
 			})
 			continue
 		}
 
 		otherValidTags = append(otherValidTags, &ValidTag{
-			name:             tag[0],
-			params:           params,
-			messageName:      parseMessageName(tag[0], ft),
-			messageParameter: parseMessageParameterIntoMap(tag[0], params...),
+			name:              tag[0],
+			params:            params,
+			messageName:       f.parseMessageName(tag[0], ft),
+			messageParameters: f.parseMessageParameterIntoSlice(tag[0], params...),
 		})
 	}
 	return requiredTags, otherValidTags
 }
 
-func isvalidTag(s string) bool {
+func (f *field) isvalidTag(s string) bool {
 	if s == "" {
 		return false
 	}
@@ -229,7 +229,7 @@ func isvalidTag(s string) bool {
 	return true
 }
 
-func parseMessageName(rule string, ft reflect.Type) string {
+func (f *field) parseMessageName(rule string, ft reflect.Type) string {
 	messageName := rule
 
 	switch rule {
@@ -255,9 +255,15 @@ func parseMessageName(rule string, ft reflect.Type) string {
 	}
 }
 
-type messageParameterMap map[string]string
+type messageParameter struct {
+	Key   string
+	Value string
+}
 
-func parseMessageParameterIntoMap(rule string, params ...string) messageParameterMap {
+type messageParameters []messageParameter
+
+func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) messageParameters {
+	var messageParameters messageParameters
 	switch rule {
 	case "requiredUnless":
 		if len(params) < 2 {
@@ -278,46 +284,79 @@ func parseMessageParameterIntoMap(rule string, params ...string) messageParamete
 			buff.WriteString(v)
 		}
 
-		return messageParameterMap{
-			"values": buff.String(),
-		}
-
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "values",
+				Value: buff.String(),
+			},
+		)
 	case "between", "digitsBetween":
 		if len(params) != 2 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"min": params[0],
-			"max": params[1],
-		}
+
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "min",
+				Value: params[0],
+			}, messageParameter{
+				Key:   "max",
+				Value: params[1],
+			},
+		)
 	case "gt", "gte", "lt", "lte":
 		if len(params) != 1 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"value": params[0],
-		}
+
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "value",
+				Value: params[0],
+			},
+		)
 	case "max":
 		if len(params) != 1 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"max": params[0],
-		}
+
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "max",
+				Value: params[0],
+			},
+		)
 	case "min":
 		if len(params) != 1 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"min": params[0],
-		}
+
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "min",
+				Value: params[0],
+			},
+		)
 	case "size":
 		if len(params) != 1 {
 			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
 		}
-		return messageParameterMap{
-			"size": params[0],
-		}
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "size",
+				Value: params[0],
+			},
+		)
+	}
+
+	if messageParameters != nil && len(messageParameters) > 0 {
+		return messageParameters
 	}
 
 	return nil

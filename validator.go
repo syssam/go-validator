@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode/utf8"
 )
 
@@ -15,28 +14,17 @@ const tagName string = "valid"
 
 // Validator contruct
 type Validator struct {
-	Translator    *Translator
 	Attributes    map[string]string
 	CustomMessage map[string]string
+	Translator    *Translator
 }
 
-var loadValidatorOnce *Validator
-var once sync.Once
+// Default returns a instance of Validator
+var Default = New()
 
-// New returns a new instance of 'valid' with sane defaults.
+// New returns a new instance of Validator
 func New() *Validator {
-	once.Do(func() {
-		loadValidatorOnce = &Validator{}
-	})
-	return loadValidatorOnce
-}
-
-// newValidator returns a new instance of 'valid' with sane defaults.
-func newValidator() *Validator {
-	once.Do(func() {
-		loadValidatorOnce = &Validator{}
-	})
-	return loadValidatorOnce
+	return &Validator{}
 }
 
 // validateBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
@@ -383,7 +371,7 @@ func ValidateDistinct(i interface{}) bool {
 	return validateDistinct(v)
 }
 
-func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
+func (v *Validator) validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte) error {
 	if s == nil {
 		return nil
 	}
@@ -404,8 +392,12 @@ func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte)
 
 	for _, f := range fields {
 		valuefield := val.Field(f.index[0])
-		err := newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
+		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
 		if err != nil {
+			err, ok := err.(*FieldError)
+			if ok {
+				err = v.formatsMessages(err)
+			}
 			errs = append(errs, err)
 		}
 	}
@@ -420,15 +412,14 @@ func validateStruct(s interface{}, jsonNamespace []byte, structNamespace []byte)
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
 func ValidateStruct(s interface{}) error {
-	newValidator()
-	return validateStruct(s, nil, nil)
+	return Default.validateStruct(s, nil, nil)
 }
 
-func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
+func (validator *Validator) newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
 	if !v.IsValid() || f.omitEmpty && Empty(v) {
 		return nil
-
 	}
+
 	name := string(append(jsonNamespace, f.nameBytes...))
 	structName := string(append(structNamespace, f.structName...))
 
@@ -439,11 +430,14 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 	for _, tag := range f.validTags {
 		if validatefunc, ok := CustomTypeRuleMap.Get(tag.name); ok {
 			if result := validatefunc(v, o, tag); !result {
-				return &Error{
-					Name:       name,
-					StructName: structName,
-					Err:        formatsMessages(tag, v, f, o),
-					Tag:        tag.name,
+				return &FieldError{
+					name:              name,
+					structName:        structName,
+					tag:               tag.name,
+					messageName:       tag.messageName,
+					messageParameters: parseValidatorMessageParameters(tag, o),
+					attribute:         f.attribute,
+					value:             ToString(v.Interface()),
 				}
 			}
 		}
@@ -465,11 +459,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := RuleMap[tag.name]; ok {
 				isValid := validfunc(v)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -477,11 +475,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -491,11 +493,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				if validfunc, ok := StringRulesMap[tag.name]; ok {
 					isValid := validfunc(v.String())
 					if !isValid {
-						return &Error{
-							Name:       name,
-							StructName: structName,
-							Err:        formatsMessages(tag, v, f, o),
-							Tag:        tag.name,
+						return &FieldError{
+							name:              name,
+							structName:        structName,
+							tag:               tag.name,
+							messageName:       tag.messageName,
+							messageParameters: parseValidatorMessageParameters(tag, o),
+							attribute:         f.attribute,
+							value:             ToString(v.Interface()),
+							err:               nil,
 						}
 					}
 				}
@@ -516,11 +522,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := RuleMap[tag.name]; ok {
 				isValid := validfunc(v)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -528,11 +538,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -553,7 +567,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				newJSONNamespace = append(append(newJSONNamespace, []byte(k.String())...), '.')
 				newstructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
 				newstructNamespace = append(append(newstructNamespace, []byte(k.String())...), '.')
-				err = validateStruct(value.Interface(), newJSONNamespace, newstructNamespace)
+				err = validator.validateStruct(value.Interface(), newJSONNamespace, newstructNamespace)
 				if err != nil {
 					return err
 				}
@@ -569,11 +583,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := RuleMap[tag.name]; ok {
 				isValid := validfunc(v)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -581,11 +599,15 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 			if validfunc, ok := ParamRuleMap[tag.name]; ok {
 				isValid := validfunc(v, tag.params)
 				if !isValid {
-					return &Error{
-						Name:       name,
-						StructName: structName,
-						Err:        formatsMessages(tag, v, f, o),
-						Tag:        tag.name,
+					return &FieldError{
+						name:              name,
+						structName:        structName,
+						tag:               tag.name,
+						messageName:       tag.messageName,
+						messageParameters: parseValidatorMessageParameters(tag, o),
+						attribute:         f.attribute,
+						value:             ToString(v.Interface()),
+						err:               nil,
 					}
 				}
 			}
@@ -603,7 +625,7 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 				newJSONNamespace = append(append(newJSONNamespace, []byte(strconv.Itoa(i))...), '.')
 				newStructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
 				newStructNamespace = append(append(newStructNamespace, []byte(strconv.Itoa(i))...), '.')
-				err = validateStruct(v.Index(i).Interface(), newJSONNamespace, newStructNamespace)
+				err = validator.validateStruct(v.Index(i).Interface(), newJSONNamespace, newStructNamespace)
 				if err != nil {
 					return err
 				}
@@ -611,24 +633,21 @@ func newTypeValidator(v reflect.Value, f *field, o reflect.Value, jsonNamespace 
 		}
 		return nil
 	case reflect.Interface:
-		// If the value is an interface then encode its element
 		if v.IsNil() {
 			return nil
 		}
-		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
+		return validator.validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Ptr:
-		// If the value is a pointer then check its element
 		if v.IsNil() {
 			return nil
 		}
-
 		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
-		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
+		return validator.validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	case reflect.Struct:
 		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
-		return validateStruct(v.Interface(), jsonNamespace, structNamespace)
+		return validator.validateStruct(v.Interface(), jsonNamespace, structNamespace)
 	default:
 		return &UnsupportedTypeError{v.Type()}
 	}
@@ -694,16 +713,15 @@ func validateRequiredIf(v reflect.Value, anotherField reflect.Value, params []st
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherField)
-		if InString(value, params) {
-			if Empty(v) {
-				if tag != nil {
-					if tag.messageParameter == nil {
-						tag.messageParameter = make(messageParameterMap)
-					}
-					tag.messageParameter["value"] = value
-				}
-				return false
-			}
+		if InString(value, params) && Empty(v) && tag != nil {
+			tag.messageParameters = append(
+				tag.messageParameters,
+				messageParameter{
+					Key:   "value",
+					Value: value,
+				},
+			)
+			return false
 		}
 	case reflect.Map:
 		values := []string{}
@@ -724,16 +742,15 @@ func validateRequiredIf(v reflect.Value, anotherField reflect.Value, params []st
 		}
 
 		for _, value := range values {
-			if InString(value, params) {
-				if Empty(v) {
-					if tag != nil {
-						if tag.messageParameter == nil {
-							tag.messageParameter = make(messageParameterMap)
-						}
-						tag.messageParameter["value"] = value
-					}
-					return false
-				}
+			if InString(value, params) && Empty(v) {
+				tag.messageParameters = append(
+					tag.messageParameters,
+					messageParameter{
+						Key:   "value",
+						Value: value,
+					},
+				)
+				return false
 			}
 		}
 	case reflect.Slice, reflect.Array:
@@ -754,12 +771,13 @@ func validateRequiredIf(v reflect.Value, anotherField reflect.Value, params []st
 		for _, value := range values {
 			if InString(value, params) {
 				if Empty(v) {
-					if tag != nil {
-						if tag.messageParameter == nil {
-							tag.messageParameter = make(messageParameterMap)
-						}
-						tag.messageParameter["value"] = value
-					}
+					tag.messageParameters = append(
+						tag.messageParameters,
+						messageParameter{
+							Key:   "value",
+							Value: value,
+						},
+					)
 					return false
 				}
 			}
@@ -875,7 +893,7 @@ func anyFailingRequired(parameters []string, v reflect.Value) bool {
 	return false
 }
 
-func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, structName string) error {
+func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, structName string) *FieldError {
 	for _, tag := range f.requiredTags {
 		isError := false
 		switch tag.name {
@@ -910,11 +928,15 @@ func checkRequired(v reflect.Value, f *field, o reflect.Value, name string, stru
 		}
 
 		if isError {
-			return &Error{
-				Name:       name,
-				StructName: structName,
-				Err:        formatsMessages(tag, v, f, o),
-				Tag:        tag.name,
+			return &FieldError{
+				name:              name,
+				structName:        structName,
+				tag:               tag.name,
+				messageName:       tag.messageName,
+				messageParameters: parseValidatorMessageParameters(tag, o),
+				attribute:         f.attribute,
+				value:             ToString(v.Interface()),
+				err:               nil,
 			}
 		}
 	}
@@ -954,6 +976,70 @@ func validateRequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 	return true
 }
 
+func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) messageParameters {
+	messageParameters := validTag.messageParameters
+	switch validTag.name {
+	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+		first := true
+		var buff bytes.Buffer
+		for _, v := range validTag.params {
+			if first {
+				first = false
+			} else {
+				buff.WriteByte(' ')
+				buff.WriteByte('/')
+				buff.WriteByte(' ')
+			}
+
+			buff.WriteString(v)
+		}
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "values",
+				Value: buff.String(),
+			},
+		)
+	case "requiredIf", "requiredUnless", "same":
+		other := getDisplayableAttribute(o, validTag.params[0])
+		messageParameters = append(
+			messageParameters,
+			messageParameter{
+				Key:   "other",
+				Value: other,
+			},
+		)
+	}
+
+	return messageParameters
+}
+
+func (v *Validator) formatsMessages(fieldError *FieldError) *FieldError {
+	var message string
+	var ok bool
+
+	if message, ok = v.CustomMessage[fieldError.structName+"."+fieldError.messageName]; ok {
+		fieldError.err = fmt.Errorf(message)
+		return fieldError
+	}
+
+	message, ok = MessageMap[fieldError.messageName]
+	if ok {
+		attribute := fieldError.attribute
+		if customAttribute, ok := v.Attributes[fieldError.structName]; ok {
+			attribute = customAttribute
+		}
+		message = replaceAttributes(message, attribute, fieldError.messageParameters)
+
+		fieldError.err = fmt.Errorf(message)
+		return fieldError
+	}
+
+	fieldError.err = fmt.Errorf("validator: undefined message : %s", fieldError.messageName)
+	return fieldError
+}
+
+/*
 func formatsMessages(validTag *ValidTag, v reflect.Value, f *field, o reflect.Value) error {
 	validator := newValidator()
 
@@ -966,7 +1052,7 @@ func formatsMessages(validTag *ValidTag, v reflect.Value, f *field, o reflect.Va
 
 	if validator.Translator != nil {
 		message = validator.Translator.Trans(f.structName, validTag.messageName, f.attribute)
-		message = replaceAttributes(message, "", validTag.messageParameter)
+		message = replaceAttributes(message, "", validTag.messageParameters)
 	} else {
 		message, ok = MessageMap[validTag.messageName]
 		if ok {
@@ -974,78 +1060,23 @@ func formatsMessages(validTag *ValidTag, v reflect.Value, f *field, o reflect.Va
 			if customAttribute, ok := validator.Attributes[f.structName]; ok {
 				attribute = customAttribute
 			}
-			message = replaceAttributes(message, attribute, validTag.messageParameter)
+			message = replaceAttributes(message, attribute, validTag.messageParameters)
 		}
-	}
-
-	if message != "" {
-		if shouldReplaceRequiredWith(validTag.name) {
-			message = replaceRequiredWith(message, validTag.params, validator)
-		}
-
-		if shouldReplaceRequiredIf(validTag.name) {
-			message = replaceRequiredIf(message, o, validTag.params[0], validator)
-		}
-
-		if validTag.name == "same" {
-			message = replaceSame(message, o, validTag.params[0], validator)
-		}
-
-		return fmt.Errorf(message)
 	}
 
 	return fmt.Errorf("validator: undefined message : %s", validTag.messageName)
 }
+*/
 
-func replaceAttributes(message string, attribute string, messageParameter messageParameterMap) string {
+func replaceAttributes(message string, attribute string, messageParameters messageParameters) string {
 	message = strings.Replace(message, ":attribute", attribute, -1)
-	for key, value := range messageParameter {
-		message = strings.Replace(message, ":"+key, value, -1)
+	for _, parameter := range messageParameters {
+		message = strings.Replace(message, ":"+parameter.Key, parameter.Value, -1)
 	}
 	return message
 }
 
-func replaceRequiredWith(message string, attributes []string, validator *Validator) string {
-	first := true
-	var buff bytes.Buffer
-	for _, v := range attributes {
-		if first {
-			first = false
-		} else {
-			buff.WriteByte(' ')
-			buff.WriteByte('/')
-			buff.WriteByte(' ')
-		}
-
-		if validator.Translator != nil {
-			locale := validator.Translator.GetLocale()
-			if customAttribute, ok := validator.Translator.attributes[locale][v]; ok {
-				buff.WriteString(customAttribute)
-				continue
-			}
-		}
-
-		if customAttribute, ok := validator.Attributes[v]; ok {
-			buff.WriteString(customAttribute)
-			continue
-		}
-
-		buff.WriteString(v)
-	}
-
-	return strings.Replace(message, ":values", buff.String(), -1)
-}
-
-func shouldReplaceRequiredWith(tag string) bool {
-	switch tag {
-	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
-		return true
-	default:
-		return false
-	}
-}
-
-func getDisplayableAttribute(o reflect.Value, attribute string, validator *Validator) string {
+func getDisplayableAttribute(o reflect.Value, attribute string) string {
 	attributes := strings.Split(attribute, ".")
 	if len(attributes) > 0 {
 		attribute = o.Type().Name() + attributes[0]
@@ -1053,37 +1084,7 @@ func getDisplayableAttribute(o reflect.Value, attribute string, validator *Valid
 		attribute = strings.Join(attributes[len(attributes)-2:], ".")
 	}
 
-	if validator.Translator != nil {
-		locale := validator.Translator.GetLocale()
-		if customAttribute, ok := validator.Translator.attributes[locale][attribute]; ok {
-			return customAttribute
-		}
-	}
-
-	if customAttribute, ok := validator.Attributes[attribute]; ok {
-		return customAttribute
-	}
-
 	return attributes[len(attributes)-1]
-}
-
-func replaceSame(message string, o reflect.Value, attribute string, validator *Validator) string {
-	other := getDisplayableAttribute(o, attribute, validator)
-	return strings.Replace(message, ":other", other, -1)
-}
-
-func replaceRequiredIf(message string, o reflect.Value, attribute string, validator *Validator) string {
-	other := getDisplayableAttribute(o, attribute, validator)
-	return strings.Replace(message, ":other", other, -1)
-}
-
-func shouldReplaceRequiredIf(tag string) bool {
-	switch tag {
-	case "requiredIf", "requiredUnless":
-		return true
-	default:
-		return false
-	}
 }
 
 func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
@@ -1138,11 +1139,15 @@ func checkDependentRules(validTag *ValidTag, f *field, v reflect.Value, o reflec
 	}
 
 	if !isValid {
-		return &Error{
-			Name:       name,
-			StructName: structName,
-			Err:        formatsMessages(validTag, v, f, o),
-			Tag:        validTag.name,
+		return &FieldError{
+			name:              name,
+			structName:        structName,
+			tag:               validTag.name,
+			messageName:       validTag.messageName,
+			messageParameters: parseValidatorMessageParameters(validTag, o),
+			attribute:         f.attribute,
+			value:             ToString(v.Interface()),
+			err:               nil,
 		}
 	}
 
