@@ -43,7 +43,11 @@ func (t *Translator) SetAttributes(langCode string, messages Translate) {
 // Trans translate errors
 func (t *Translator) Trans(errors Errors, language string) Errors {
 	for i := 0; i < len(errors); i++ {
-		fieldError := errors[i].(*FieldError)
+		fieldError, ok := errors[i].(*FieldError)
+		if !ok {
+			break
+		}
+
 		if m, ok := t.customMessage[language][fieldError.name+"."+fieldError.messageName]; ok {
 			errors[i].(*FieldError).err = fmt.Errorf(m)
 			break
@@ -56,10 +60,10 @@ func (t *Translator) Trans(errors Errors, language string) Errors {
 				attribute = customAttribute
 			}
 
-			message = strings.Replace(message, ":attribute", attribute, -1)
+			message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
 
 			for _, parameter := range fieldError.messageParameters {
-				message = strings.Replace(message, ":"+parameter.Key, parameter.Value, -1)
+				message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
 			}
 
 			errors[i].(*FieldError).err = fmt.Errorf(message)
