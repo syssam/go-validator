@@ -287,7 +287,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "values",
+				Key:   "Values",
 				Value: buff.String(),
 			},
 		)
@@ -299,10 +299,10 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "min",
+				Key:   "Min",
 				Value: params[0],
 			}, messageParameter{
-				Key:   "max",
+				Key:   "Max",
 				Value: params[1],
 			},
 		)
@@ -314,7 +314,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "value",
+				Key:   "Value",
 				Value: params[0],
 			},
 		)
@@ -326,7 +326,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "max",
+				Key:   "Max",
 				Value: params[0],
 			},
 		)
@@ -338,7 +338,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "min",
+				Key:   "Min",
 				Value: params[0],
 			},
 		)
@@ -349,7 +349,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) me
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
-				Key:   "size",
+				Key:   "Size",
 				Value: params[0],
 			},
 		)
