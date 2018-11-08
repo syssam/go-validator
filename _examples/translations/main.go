@@ -28,13 +28,12 @@ type Address struct {
 }
 
 func main() {
-	validatorInstance := validator.New()
-	validatorInstance.Translator = validator.NewTranslator()
-	validatorInstance.Translator.SetMessage("en", validator_en.MessageMap)
-	validatorInstance.Translator.SetMessage("zh_CN", validator_zh_CN.MessageMap)
-	validatorInstance.Translator.SetAttributes("en", lang_en.AttributeMap)
-	validatorInstance.Translator.SetAttributes("zh_CN", lang_zh_CN.AttributeMap)
-	validatorInstance.Translator.SetLocale("zh_CN")
+	translator := validator.NewTranslator()
+	translator.SetMessage("en", validator_en.MessageMap)
+	translator.SetMessage("zh_CN", validator_zh_CN.MessageMap)
+	translator.SetAttributes("en", lang_en.AttributeMap)
+	translator.SetAttributes("zh_CN", lang_zh_CN.AttributeMap)
+	validator.Default.Translator = translator
 
 	address := &Address{
 		Street: "Eavesdown Docks",
@@ -50,9 +49,11 @@ func main() {
 		Addresses: []*Address{address},
 	}
 
+	validator.ValidateStruct(user)
 	err := validator.ValidateStruct(user)
 	if err != nil {
-		for _, err := range err.(validator.Errors) {
+		errs := validator.Default.Translator.Trans(err.(validator.Errors), "zh_CN")
+		for _, err := range errs {
 			fmt.Println(err)
 		}
 		return
