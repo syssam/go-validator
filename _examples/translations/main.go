@@ -49,7 +49,6 @@ func main() {
 		Addresses: []*Address{address},
 	}
 
-	validator.ValidateStruct(user)
 	err := validator.ValidateStruct(user)
 	if err != nil {
 		errs := validator.Default.Translator.Trans(err.(validator.Errors), "zh_CN")
