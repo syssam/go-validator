@@ -213,7 +213,7 @@ func validateSame(v reflect.Value, anotherField reflect.Value) bool {
 		return compareFloat64(v.Float(), anotherField.Float(), "==")
 	}
 
-	panic(fmt.Sprintf("validator: Lt unsupport Type %T", v.Interface()))
+	panic(fmt.Sprintf("validator: Same unsupport Type %T", v.Interface()))
 }
 
 // ValidateSame is the validation function for validating if the current field's value is greater than or equal to the param's value.
