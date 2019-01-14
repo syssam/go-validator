@@ -1,3 +1,9 @@
+<h1>go-validator</h1>
+<p>
+  <a href='https://coveralls.io/github/syssam/go-validator?branch=master'><img src='https://coveralls.io/repos/github/syssam/go-validator/badge.svg?branch=master' alt='Coverage Status' /></a>
+  <a href="https://goreportcard.com/report/github.com/syssam/go-validator" rel="nofollow"><img src="https://goreportcard.com/badge/github.com/syssam/go-validator" alt="Go Report Card" data-canonical-src="https://goreportcard.com/badge/github.com/syssam/go-validator" style="max-width:100%;"></a>
+  <a href="https://godoc.org/github.com/syssam/go-validator" rel="nofollow"><img src="https://godoc.org/github.com/syssam/go-validator?status.svg" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/syssam/go-validator?status.svg" style="max-width:100%;"></a>
+</p>
 <p>A package of validators and sanitizers for strings, structs and collections.</p>
 <p>features:</p>
 <ul>
