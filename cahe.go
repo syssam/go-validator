@@ -29,7 +29,7 @@ type ValidTag struct {
 	name              string
 	params            []string
 	messageName       string
-	messageParameters messageParameters
+	messageParameters MessageParameters
 }
 
 // A otherValidTags represents parse validTag into field struct when validTag is not required...
@@ -260,10 +260,10 @@ type messageParameter struct {
 	Value string
 }
 
-type messageParameters []messageParameter
+type MessageParameters []messageParameter
 
-func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) messageParameters {
-	var messageParameters messageParameters
+func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) MessageParameters {
+	var messageParameters MessageParameters
 	switch rule {
 	case "requiredUnless":
 		if len(params) < 2 {

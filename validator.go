@@ -966,7 +966,7 @@ func validateRequiredWithoutAll(otherFields []string, v reflect.Value) bool {
 	return true
 }
 
-func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) messageParameters {
+func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) MessageParameters {
 	messageParameters := validTag.messageParameters
 	switch validTag.name {
 	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
@@ -1029,7 +1029,7 @@ func (v *Validator) formatsMessages(fieldError *FieldError) *FieldError {
 	return fieldError
 }
 
-func replaceAttributes(message string, attribute string, messageParameters messageParameters) string {
+func replaceAttributes(message string, attribute string, messageParameters MessageParameters) string {
 	message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
 	for _, parameter := range messageParameters {
 		message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
