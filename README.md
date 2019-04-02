@@ -150,6 +150,7 @@
     IsNull(str string) bool
     ValidateBetween(i interface{}, params []string) bool
     ValidateDigitsBetween(i interface{}, params []string) bool
+    ValidateDigitsBetweenInt64(value, left, right int64) bool
     ValidateDigitsBetweenFloat64(value, left, right float64) bool
     ValidateGt(i interface{}, a interface{}) bool
     ValidateGtFloat64(v, param float64) bool
