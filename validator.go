@@ -3,6 +3,7 @@ package validator
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"reflect"
 	"sort"
 	"strconv"
@@ -369,6 +370,36 @@ func validateDistinct(v reflect.Value) bool {
 func ValidateDistinct(i interface{}) bool {
 	v := reflect.ValueOf(i)
 	return validateDistinct(v)
+}
+
+// ValidateMimeTypes is the validation function for the file must match one of the given MIME types.
+func ValidateMimeTypes(data []byte, mimeTypes []string) bool {
+	mimeType := http.DetectContentType(data)
+	for _, value := range mimeTypes {
+		if mimeType == value {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidateMimes is the validation function for the file must have a MIME type corresponding to one of the listed extensions.
+func ValidateMimes(data []byte, mimes []string) bool {
+	mimeTypes := make([]string, len(mimes))
+	for i, mime := range mimes {
+		if val, ok := Mimes[mime]; ok {
+			mimeTypes[i] = Mimes[val]
+		} else {
+			panic(fmt.Sprintf("validator: Mimes unsupport Type %s", mime))
+		}
+	}
+
+	return ValidateMimeTypes(data, mimeTypes)
+}
+
+// ValidateImage is the validation function for the The file under validation must be an image (jpeg, png, bmp, gif, or svg)
+func ValidateImage(data []byte) bool {
+	return ValidateMimes(data, []string{"jpeg", "png", "gif", "bmp", "svg"})
 }
 
 // ValidateStruct use tags for fields.
