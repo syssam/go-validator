@@ -150,8 +150,21 @@
     IsNull(str string) bool
     ValidateBetween(i interface{}, params []string) bool
     ValidateDigitsBetween(i interface{}, params []string) bool
+    ValidateDigitsBetweenInt64(value, left, right int64) bool
+    ValidateDigitsBetweenFloat64(value, left, right float64) bool
+    ValidateGt(i interface{}, a interface{}) bool
+    ValidateGtFloat64(v, param float64) bool
+    ValidateGte(i interface{}, a interface{}) bool
+    ValidateGteFloat64(v, param float64) bool
+    ValidateLt(i interface{}, a interface{}) bool
+    ValidateLtFloat64(v, param float64) bool
+    ValidateLte(i interface{}, a interface{}) bool
+    ValidateLteFloat64(v, param float64) bool
+    ValidateRequired(i interface{}) bool
     ValidateMin(i interface{}, params []string) bool
+    ValidateMinFloat64(v, param float64) bool
     ValidateMax(i interface{}, params []string) bool
+    ValidateMaxFloat64(v, param float64) bool
     ValidateSize(i interface{}, params []string) bool
     ValidateDistinct(i interface{}) bool
     ValidateEmail(str string) bool
