@@ -58,6 +58,8 @@ func (t *Translator) Trans(errors Errors, language string) Errors {
 			attribute := fieldError.attribute
 			if customAttribute, ok := t.attributes[language][fieldError.structName]; ok {
 				attribute = customAttribute
+			} else if fieldError.defaultAttribute != "" {
+				attribute = fieldError.defaultAttribute
 			}
 
 			message = strings.Replace(message, "{{.Attribute}}", attribute, -1)

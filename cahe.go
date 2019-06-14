@@ -11,17 +11,18 @@ import (
 
 // A field represents a single field found in a struct.
 type field struct {
-	name            string
-	nameBytes       []byte // []byte(name)
-	structName      string
-	structNameBytes []byte // []byte(structName)
-	attribute       string
-	tag             bool
-	index           []int
-	requiredTags    requiredTags
-	validTags       otherValidTags
-	typ             reflect.Type
-	omitEmpty       bool
+	name             string
+	nameBytes        []byte // []byte(name)
+	structName       string
+	structNameBytes  []byte // []byte(structName)
+	attribute        string
+	defaultAttribute string
+	tag              bool
+	index            []int
+	requiredTags     requiredTags
+	validTags        otherValidTags
+	typ              reflect.Type
+	omitEmpty        bool
 }
 
 // A ValidTag represents parse validTag into field struct.
@@ -97,6 +98,7 @@ func typefields(t reflect.Type) []field {
 				if !f.isvalidTag(name) {
 					name = ""
 				}
+
 				if validTag == "-" || validTag == "" {
 					continue
 				}
@@ -118,20 +120,21 @@ func typefields(t reflect.Type) []field {
 						name = sf.Name
 					}
 
-					requiredTags, otherValidTags := f.parseTagIntoSlice(validTag, ft)
+					requiredTags, otherValidTags, defaultAttribute := f.parseTagIntoSlice(validTag, ft)
 
 					fields = append(fields, field{
-						name:            name,
-						nameBytes:       []byte(name),
-						structName:      t.Name() + "." + sf.Name,
-						structNameBytes: []byte(t.Name() + "." + sf.Name),
-						attribute:       sf.Name,
-						tag:             tagged,
-						index:           index,
-						requiredTags:    requiredTags,
-						validTags:       otherValidTags,
-						typ:             ft,
-						omitEmpty:       strings.Contains(validTag, "omitempty"),
+						name:             name,
+						nameBytes:        []byte(name),
+						structName:       t.Name() + "." + sf.Name,
+						structNameBytes:  []byte(t.Name() + "." + sf.Name),
+						attribute:        sf.Name,
+						defaultAttribute: defaultAttribute,
+						tag:              tagged,
+						index:            index,
+						requiredTags:     requiredTags,
+						validTags:        otherValidTags,
+						typ:              ft,
+						omitEmpty:        strings.Contains(validTag, "omitempty"),
 					})
 
 					if count[f.typ] > 1 {
@@ -148,19 +151,20 @@ func typefields(t reflect.Type) []field {
 				// Record new anonymous struct to explore in next round.
 				nextCount[ft]++
 				if nextCount[ft] == 1 {
-					requiredTags, otherValidTags := f.parseTagIntoSlice(validTag, ft)
+					requiredTags, otherValidTags, defaultAttribute := f.parseTagIntoSlice(validTag, ft)
 
 					next = append(next, field{
-						name:            sf.Name,
-						nameBytes:       []byte(sf.Name),
-						structName:      t.Name() + "." + sf.Name,
-						structNameBytes: []byte(t.Name() + "." + sf.Name),
-						attribute:       sf.Name,
-						index:           index,
-						requiredTags:    requiredTags,
-						validTags:       otherValidTags,
-						typ:             ft,
-						omitEmpty:       strings.Contains(validTag, "omitempty"),
+						name:             sf.Name,
+						nameBytes:        []byte(sf.Name),
+						structName:       t.Name() + "." + sf.Name,
+						structNameBytes:  []byte(t.Name() + "." + sf.Name),
+						attribute:        sf.Name,
+						defaultAttribute: defaultAttribute,
+						index:            index,
+						requiredTags:     requiredTags,
+						validTags:        otherValidTags,
+						typ:              ft,
+						omitEmpty:        strings.Contains(validTag, "omitempty"),
 					})
 				}
 			}
@@ -170,10 +174,11 @@ func typefields(t reflect.Type) []field {
 	return fields
 }
 
-func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags) {
+func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags, string) {
 	options := strings.Split(tag, ",")
 	var otherValidTags otherValidTags
 	var requiredTags requiredTags
+	defaultAttribute := ""
 
 	for _, option := range options {
 		option = strings.TrimSpace(option)
@@ -190,6 +195,11 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 		}
 
 		switch tag[0] {
+		case "attribute":
+			if len(tag) == 2 {
+				defaultAttribute = tag[1]
+			}
+			continue
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
 			requiredTags = append(requiredTags, &ValidTag{
 				name:              tag[0],
@@ -207,7 +217,8 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 			messageParameters: f.parseMessageParameterIntoSlice(tag[0], params...),
 		})
 	}
-	return requiredTags, otherValidTags
+
+	return requiredTags, otherValidTags, defaultAttribute
 }
 
 func (f *field) isvalidTag(s string) bool {
@@ -226,6 +237,14 @@ func (f *field) isvalidTag(s string) bool {
 			}
 		}
 	}
+	return true
+}
+
+func (f *field) isvalidAttribute(s string) bool {
+	if s == "" {
+		return false
+	}
+
 	return true
 }
 

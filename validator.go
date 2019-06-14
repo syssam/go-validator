@@ -466,6 +466,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 					messageName:       tag.messageName,
 					messageParameters: parseValidatorMessageParameters(tag, o),
 					attribute:         f.attribute,
+					defaultAttribute:  f.defaultAttribute,
 					value:             ToString(value.Interface()),
 				})
 			}
@@ -495,6 +496,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -510,6 +512,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -527,6 +530,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 							messageName:       tag.messageName,
 							messageParameters: parseValidatorMessageParameters(tag, o),
 							attribute:         f.attribute,
+							defaultAttribute:  f.defaultAttribute,
 							value:             ToString(value.Interface()),
 						})
 					}
@@ -555,6 +559,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -570,6 +575,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -614,6 +620,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -629,6 +636,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 						messageName:       tag.messageName,
 						messageParameters: parseValidatorMessageParameters(tag, o),
 						attribute:         f.attribute,
+						defaultAttribute:  f.defaultAttribute,
 						value:             ToString(value.Interface()),
 					})
 				}
@@ -957,6 +965,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 				messageName:       tag.messageName,
 				messageParameters: parseValidatorMessageParameters(tag, o),
 				attribute:         f.attribute,
+				defaultAttribute:  f.defaultAttribute,
 				value:             ToString(value.Interface()),
 			})
 		}
@@ -1049,6 +1058,8 @@ func (v *Validator) formatsMessages(fieldError *FieldError) *FieldError {
 		attribute := fieldError.attribute
 		if customAttribute, ok := v.Attributes[fieldError.structName]; ok {
 			attribute = customAttribute
+		} else if fieldError.defaultAttribute != "" {
+			attribute = fieldError.defaultAttribute
 		}
 		message = replaceAttributes(message, attribute, fieldError.messageParameters)
 
@@ -1138,6 +1149,7 @@ func (v *Validator) checkDependentRules(validTag *ValidTag, f *field, value refl
 			messageName:       validTag.messageName,
 			messageParameters: parseValidatorMessageParameters(validTag, o),
 			attribute:         f.attribute,
+			defaultAttribute:  f.defaultAttribute,
 			value:             ToString(value.Interface()),
 		})
 	}

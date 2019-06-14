@@ -61,6 +61,7 @@ type FieldError struct {
 	messageName       string
 	messageParameters MessageParameters
 	attribute         string
+	defaultAttribute  string
 	value             string
 	err               error
 }

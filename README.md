@@ -19,6 +19,7 @@
 <ul>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/simple">Simple</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/translations">Translations</a></li>
+  <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/translation">Simple Translation</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/gin">Gin</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/echo">Echo</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/iris">Iris</a></li>
