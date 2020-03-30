@@ -530,7 +530,7 @@ func TestInnerStruct2(t *testing.T) {
 	}
 
 	err := ValidateStruct(u)
-	if err != nil {
+	if err == nil {
 		t.Errorf("Got Error on validateateStruct: %s", err)
 	}
 }
