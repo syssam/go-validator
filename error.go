@@ -12,6 +12,22 @@ func (es Errors) Errors() []error {
 	return es
 }
 
+// FieldErrors returns FieldError.
+func (es Errors) FieldErrors() []*FieldError {
+	fieldErrors := make([]*FieldError, len(es))
+	for _, e := range es {
+		if fieldErr, ok := e.(*FieldError); ok {
+			fieldErrors = append(fieldErrors, fieldErr)
+		} else {
+			fieldErrors = append(fieldErrors, &FieldError{
+				err: e,
+			})
+		}
+	}
+
+	return fieldErrors
+}
+
 func (es Errors) Error() string {
 	var buff bytes.Buffer
 	first := true
