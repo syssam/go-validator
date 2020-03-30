@@ -434,7 +434,9 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace []byte, structNa
 		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
 		if err != nil {
 			if errors, ok := err.(Errors); ok {
-				errs = append(errs, errors[0:])
+				for _, fieldError := range errors {
+					errs = append(errs, fieldError)
+				}
 			} else {
 				errs = append(errs, err)
 			}
