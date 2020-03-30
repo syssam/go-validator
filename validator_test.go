@@ -502,6 +502,39 @@ func TestInnerStruct(t *testing.T) {
 	ValidateStruct(u)
 }
 
+func TestInnerStruct2(t *testing.T) {
+	type CreditCard struct {
+		Number           string
+		UserMemberNumber string `valid:"required,max=64"`
+	}
+
+	type User struct {
+		MemberNumber string
+		CreditCards  []CreditCard `json:"CreditCards"`
+	}
+
+	c := []CreditCard{
+		{
+			Number:           "1",
+			UserMemberNumber: "",
+		},
+		{
+			Number:           "2",
+			UserMemberNumber: "2",
+		},
+	}
+
+	u := User{
+		MemberNumber: "MemberNumber",
+		CreditCards:  c,
+	}
+
+	err := ValidateStruct(u)
+	if err != nil {
+		t.Errorf("Got Error on validateateStruct: %s", err)
+	}
+}
+
 func TestNameSpace(t *testing.T) {
 	type CreditCard struct {
 		Number           string

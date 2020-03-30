@@ -99,7 +99,7 @@ func typefields(t reflect.Type) []field {
 					name = ""
 				}
 
-				if validTag == "-" || validTag == "" {
+				if validTag == "-" {
 					continue
 				}
 
@@ -108,6 +108,11 @@ func typefields(t reflect.Type) []field {
 				index[len(f.index)] = i
 
 				ft := sf.Type
+
+				if validTag == "" && ft.Kind() != reflect.Slice && ft.Kind() != reflect.Array {
+					continue
+				}
+
 				if ft.Name() == "" && ft.Kind() == reflect.Ptr {
 					// Follow pointer.
 					ft = ft.Elem()
@@ -279,6 +284,7 @@ type messageParameter struct {
 	Value string
 }
 
+// A MessageParameters represents store message parameter into field struct.
 type MessageParameters []messageParameter
 
 func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) MessageParameters {
