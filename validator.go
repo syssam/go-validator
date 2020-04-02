@@ -455,6 +455,10 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		return nil
 	}
 
+	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
 	name := string(append(jsonNamespace, f.nameBytes...))
 	structName := string(append(structNamespace, f.structName...))
 
@@ -668,18 +672,6 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 			}
 		}
 		return nil
-	case reflect.Interface:
-		if value.IsNil() {
-			return nil
-		}
-		return v.ValidateStruct(value.Interface(), jsonNamespace, structNamespace)
-	case reflect.Ptr:
-		if value.IsNil() {
-			return nil
-		}
-		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
-		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
-		return v.ValidateStruct(value.Interface(), jsonNamespace, structNamespace)
 	case reflect.Struct:
 		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
 		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
