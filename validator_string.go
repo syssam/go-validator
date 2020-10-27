@@ -140,3 +140,35 @@ func ValidateIPv6(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil && ip.To4() == nil
 }
+
+// ValidateUUID3 check if the string is an uuid3.
+func ValidateUUID3(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxUUID3.MatchString(str)
+}
+
+// ValidateUUID4 check if the string is an uuid4.
+func ValidateUUID4(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxUUID4.MatchString(str)
+}
+
+// ValidateUUID5 check if the string is an uuid5.
+func ValidateUUID5(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxUUID5.MatchString(str)
+}
+
+// ValidateUUID check if the string is an uuid.
+func ValidateUUID(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxUUID.MatchString(str)
+}

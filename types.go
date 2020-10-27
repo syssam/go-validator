@@ -83,6 +83,10 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"ip":               ValidateIP,
 	"ipv4":             ValidateIPv4,
 	"ipv6":             ValidateIPv6,
+	"uuid3":            ValidateUUID3,
+	"uuid4":            ValidateUUID4,
+	"uuid5":            ValidateUUID5,
+	"uuid":             ValidateUUID,
 }
 
 // Mimes is a map of extension to MIME types.

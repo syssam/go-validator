@@ -84,5 +84,8 @@ var MessageMap = map[string]string{
 	"timezone":           "The {{.Attribute}} must be a valid zone.",
 	"unique":             "The {{.Attribute}} has already been taken.",
 	"uploaded":           "The {{.Attribute}} failed to upload.",
-	"url":                "The {{.Attribute}} format is invalid.",
+	"uuid3":              "The {{.Attribute}} format is invalid.",
+	"uuid4":              "The {{.Attribute}} format is invalid.",
+	"uuid5":              "The {{.Attribute}} format is invalid.",
+	"uuid":               "The {{.Attribute}} format is invalid.",
 }

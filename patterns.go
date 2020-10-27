@@ -14,6 +14,10 @@ const (
 	Numeric          string = "^[0-9]+$"
 	Int              string = "^(?:[-+]?(?:0|[1-9][0-9]*))$"
 	Float            string = "^(?:[-+]?(?:[0-9]+))?(?:\\.[0-9]*)?(?:[eE][\\+\\-]?(?:[0-9]+))?$"
+	UUID3            string = "^[0-9a-f]{8}-[0-9a-f]{4}-3[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$"
+	UUID4            string = "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+	UUID5            string = "^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+	UUID             string = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
 
 // Used by IsFilePath func
@@ -37,4 +41,8 @@ var (
 	rxNumeric          = regexp.MustCompile(Numeric)
 	rxInt              = regexp.MustCompile(Int)
 	rxFloat            = regexp.MustCompile(Float)
+	rxUUID3            = regexp.MustCompile(UUID3)
+	rxUUID4            = regexp.MustCompile(UUID4)
+	rxUUID5            = regexp.MustCompile(UUID5)
+	rxUUID             = regexp.MustCompile(UUID)
 )

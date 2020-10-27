@@ -90,4 +90,8 @@ var MessageMap = map[string]string{
 	"unique":             "{{.Attribute}} 已经被采取.",
 	"uploaded":           "{{.Attribute}} 无法上传.",
 	"url":                "{{.Attribute}} 格式无效.",
+	"uuid3":              "{{.Attribute}} 格式无效.",
+	"uuid4":              "{{.Attribute}} 格式无效.",
+	"uuid5":              "{{.Attribute}} 格式无效.",
+	"uuid":               "{{.Attribute}} 格式无效.",
 }

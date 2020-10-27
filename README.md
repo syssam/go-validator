@@ -133,6 +133,14 @@
 <p>The field under validation must be an IPv4 address.</p>
 <h4 id="rule-ipv6">ipv6</h4>
 <p>The field under validation must be an IPv6 address.</p>
+<h4 id="rule-ipv6">uuid3</h4>
+<p>The field under validation must be an uuid3.</p>
+<h4 id="rule-ipv6">uuid4</h4>
+<p>The field under validation must be an uuid4.</p>
+<h4 id="rule-ipv6">uuid5</h4>
+<p>The field under validation must be an uuid5.</p>
+<h4 id="rule-ipv6">uuid</h4>
+<p>The field under validation must be an uuid.</p>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>
@@ -178,5 +186,9 @@
     ValidateIP(str string) bool
     ValidateIPv4(str string) bool
     ValidateIPv6(str string) bool
+    ValidateUUID3(str string) bool
+    ValidateUUID4(str string) bool
+    ValidateUUID5(str string) bool
+    ValidateUUID(str string) bool
   </pre>
 </div>
