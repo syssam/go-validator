@@ -61,6 +61,10 @@
     <li><a>ip</a></li>
     <li><a>ipv4</a></li>
     <li><a>ipv6</a></li>
+    <li><a>uuid3</a></li>
+    <li><a>uuid4</a></li>
+    <li><a>uuid5</a></li>
+    <li><a>uuid</a></li>
 </ul>
 <h4 id="rule-omitempty">omitempty</h4>
 <p>The "omitempty" option specifies that the field should be omitted from the encoding if the field has an empty value, defined as false, 0, a nil pointer, a nil interface value, and any empty array, slice, map, or string.</p>
