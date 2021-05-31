@@ -2,15 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="79180a85-f890-490a-8186-67d5c51488ef" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lang/en/en.go" beforeDir="false" afterPath="$PROJECT_DIR$/lang/en/en.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lang/zh_CN/zh_CN.go" beforeDir="false" afterPath="$PROJECT_DIR$/lang/zh_CN/zh_CN.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lang/zh_HK/zh_HK.go" beforeDir="false" afterPath="$PROJECT_DIR$/lang/zh_HK/zh_HK.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/message.go" beforeDir="false" afterPath="$PROJECT_DIR$/message.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/patterns.go" beforeDir="false" afterPath="$PROJECT_DIR$/patterns.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/types.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/validator_string.go" beforeDir="false" afterPath="$PROJECT_DIR$/validator_string.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/validator_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/validator_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

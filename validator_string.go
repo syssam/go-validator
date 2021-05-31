@@ -172,3 +172,11 @@ func ValidateUUID(str string) bool {
 	}
 	return rxUUID.MatchString(str)
 }
+
+// ValidateURL check if the string is an URL.
+func ValidateURL(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxURL.MatchString(str)
+}

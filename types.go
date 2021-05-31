@@ -87,6 +87,7 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"uuid4":            ValidateUUID4,
 	"uuid5":            ValidateUUID5,
 	"uuid":             ValidateUUID,
+	"url":             ValidateURL,
 }
 
 // Mimes is a map of extension to MIME types.

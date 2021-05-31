@@ -158,7 +158,6 @@
   <pre>
     IsNumeric(str string) bool
     IsInt(str string) bool
-    IsInt(str string) bool
     IsFloat(str string) bool
     IsNull(str string) bool
     ValidateBetween(i interface{}, params []string) bool
@@ -194,5 +193,6 @@
     ValidateUUID4(str string) bool
     ValidateUUID5(str string) bool
     ValidateUUID(str string) bool
+    ValidateURL(str string) bool
   </pre>
 </div>
