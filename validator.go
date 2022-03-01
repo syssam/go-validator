@@ -451,18 +451,22 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace []byte, structNa
 }
 
 func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Value, jsonNamespace []byte, structNamespace []byte) (resultErr error) {
-	if !value.IsValid() || f.omitEmpty && Empty(value) {
+	if !value.IsValid() || (f.omitEmpty && Empty(value)) {
 		return nil
-	}
-
-	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
-		value = value.Elem()
 	}
 
 	name := string(append(jsonNamespace, f.nameBytes...))
 	structName := string(append(structNamespace, f.structName...))
 
-	if err := v.checkRequired(value, f, o, name, structName); err != nil {
+	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+		if err := v.checkRequired(value, f, o, name, structName); err != nil {
+			return err
+		}
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	} else if err := v.checkRequired(value, f, o, name, structName); err != nil {
 		return err
 	}
 

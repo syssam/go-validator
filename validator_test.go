@@ -19,6 +19,10 @@ type FieldsEmail struct {
 	Email string `valid:"email"`
 }
 
+type FieldsURL struct {
+	URL string `valid:"url"`
+}
+
 func TestFieldsRequired(t *testing.T) {
 	var tests = []struct {
 		param    FieldsRequired
@@ -444,9 +448,9 @@ func TestFieldsEmail(t *testing.T) {
 		err := ValidateStruct(test.param)
 		actual := err == nil
 		if actual != test.expected {
-			t.Errorf("Expected validateateStruct(%q) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			t.Errorf("Expected validateateStruct(%+v) Case %d to be %v, got %v", test.param, i, test.expected, actual)
 			if err != nil {
-				t.Errorf("Got Error on validateateStruct(%q): %s", test.param, err)
+				t.Errorf("Got Error on validateateStruct(%+v): %s", test.param, err)
 			}
 		}
 	}
@@ -563,4 +567,88 @@ func TestNameSpace(t *testing.T) {
 	}
 
 	ValidateStruct(u)
+}
+
+func TestIsURL(t *testing.T) {
+	var tests = []struct {
+		param    string
+		expected bool
+	}{
+		{"http://foo.bar#com", true},
+		{"http://foobar.com", true},
+		{"https://foobar.com", true},
+		{"foobar.com", false},
+		{"http://foobar.coffee/", true},
+		{"http://foobar.中文网/", true},
+		{"http://foobar.org/", true},
+		{"http://foobar.org:8080/", true},
+		{"ftp://foobar.ru/", true},
+		{"http://user:pass@www.foobar.com/", true},
+		{"http://127.0.0.1/", true},
+		{"http://duckduckgo.com/?q=%2F", true},
+		{"http://localhost:3000/", true},
+		{"http://foobar.com/?foo=bar#baz=qux", true},
+		{"http://foobar.com?foo=bar", true},
+		{"http://www.xn--froschgrn-x9a.net/", true},
+		{"", true},
+		{"xyz://foobar.com", true},
+		{"invalid.", false},
+		{".com", false},
+		{"rtmp://foobar.com", true},
+		{"http://www.foo_bar.com/", true},
+		{"http://localhost:3000/", true},
+		{"http://foobar.com/#baz", true},
+		{"http://foobar.com#baz=qux", true},
+		{"http://foobar.com/t$-_.+!*\\'(),", true},
+		{"http://www.foobar.com/~foobar", true},
+		{"http://www.-foobar.com/", true},
+		{"http://www.foo---bar.com/", true},
+		{"mailto:someone@example.com", true},
+		{"irc://irc.server.org/channel", true},
+		{"irc://#channel@network", true},
+		{"/abs/test/dir", false},
+		{"./rel/test/dir", false},
+	}
+	for i, test := range tests {
+		actual := ValidateURL(test.param)
+		if actual != test.expected {
+			t.Errorf("Expected IsURL(%+v) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+		}
+	}
+}
+
+func TestPointer(t *testing.T) {
+	type FieldsPointer struct {
+		Name     *string ``
+		UserName *string `valid:"max=5"`
+		Email    *string `valid:"required,email"`
+	}
+	e1 := ""
+	u1 := ""
+	e2 := "test"
+	u2 := "test"
+	e3 := "test@example.com"
+	u3 := "test123456"
+	e4 := "test@example.com"
+	u4 := "test"
+	var tests = []struct {
+		param    FieldsPointer
+		expected bool
+	}{
+		{FieldsPointer{}, false},
+		{FieldsPointer{Email: &e1, UserName: &u1}, false},
+		{FieldsPointer{Email: &e2, UserName: &u2}, false},
+		{FieldsPointer{Email: &e3, UserName: &u3}, false},
+		{FieldsPointer{Email: &e4, UserName: &u4}, true},
+	}
+	for i, test := range tests {
+		err := ValidateStruct(test.param)
+		actual := err == nil
+		if actual != test.expected {
+			t.Errorf("Expected validateateStruct(%+v) Case %d to be %v, got %v", test.param, i, test.expected, actual)
+			if err != nil {
+				t.Errorf("Got Error on validateateStruct(%+v): %s", test.param, err)
+			}
+		}
+	}
 }

@@ -3,6 +3,8 @@ package validator
 import (
 	"fmt"
 	"net"
+	"net/url"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -175,8 +177,20 @@ func ValidateUUID(str string) bool {
 
 // ValidateURL check if the string is an URL.
 func ValidateURL(str string) bool {
+	var i int
+
 	if IsNull(str) {
 		return true
 	}
-	return rxURL.MatchString(str)
+
+	if i = strings.Index(str, "#"); i > -1 {
+		str = str[:i]
+	}
+
+	url, err := url.ParseRequestURI(str)
+	if err != nil || url.Scheme == "" {
+		return false
+	}
+
+	return true
 }
