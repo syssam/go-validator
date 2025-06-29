@@ -40,20 +40,20 @@ func ValidateGtFloat64(v, param float64) bool {
 	return v > param
 }
 
-//  compareFloat64 determine if a comparison passes between the given values.
-func compareFloat64(first float64, second float64, operator string) bool {
+// compareFloat64 determines if a comparison passes between the given values.
+func compareFloat64(first float64, second float64, operator string) (bool, error) {
 	switch operator {
 	case "<":
-		return first < second
+		return first < second, nil
 	case ">":
-		return first > second
+		return first > second, nil
 	case "<=":
-		return first <= second
+		return first <= second, nil
 	case ">=":
-		return first >= second
+		return first >= second, nil
 	case "==":
-		return first == second
+		return first == second, nil
 	default:
-		panic(fmt.Sprintf("validator: compareFloat64 unsupport operator %s", operator))
+		return false, fmt.Errorf("validator: compareFloat64 unsupported operator %s", operator)
 	}
 }

@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -48,27 +47,27 @@ func (t *Translator) Trans(errors Errors, language string) Errors {
 			break
 		}
 
-		if m, ok := t.customMessage[language][fieldError.name+"."+fieldError.messageName]; ok {
-			errors[i].(*FieldError).err = fmt.Errorf(m)
+		if m, ok := t.customMessage[language][fieldError.Name+"."+fieldError.MessageName]; ok {
+			errors[i].(*FieldError).SetMessage(m)
 			break
 		}
 
-		message, ok := t.messages[language][fieldError.messageName]
+		message, ok := t.messages[language][fieldError.MessageName]
 		if ok {
-			attribute := fieldError.attribute
-			if customAttribute, ok := t.attributes[language][fieldError.structName]; ok {
+			attribute := fieldError.Attribute
+			if customAttribute, ok := t.attributes[language][fieldError.StructName]; ok {
 				attribute = customAttribute
-			} else if fieldError.defaultAttribute != "" {
-				attribute = fieldError.defaultAttribute
+			} else if fieldError.DefaultAttribute != "" {
+				attribute = fieldError.DefaultAttribute
 			}
 
 			message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
 
-			for _, parameter := range fieldError.messageParameters {
+			for _, parameter := range fieldError.MessageParameters {
 				message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
 			}
 
-			errors[i].(*FieldError).err = fmt.Errorf(message)
+			errors[i].(*FieldError).SetMessage(message)
 		}
 	}
 

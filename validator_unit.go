@@ -10,20 +10,20 @@ func ValidateDigitsBetweenUint64(value, left, right uint64) bool {
 	return value >= left && value <= right
 }
 
-//  compareUint64 determine if a comparison passes between the given values.
-func compareUint64(first uint64, second uint64, operator string) bool {
+// compareUint64 determine if a comparison passes between the given values.
+func compareUint64(first uint64, second uint64, operator string) (bool, error) {
 	switch operator {
 	case "<":
-		return first < second
+		return first < second, nil
 	case ">":
-		return first > second
+		return first > second, nil
 	case "<=":
-		return first <= second
+		return first <= second, nil
 	case ">=":
-		return first >= second
+		return first >= second, nil
 	case "==":
-		return first == second
+		return first == second, nil
 	default:
-		panic(fmt.Sprintf("validator: compareUint64 unsupport operator %s", operator))
+		return false, fmt.Errorf("validator: compareUint64 unsupported operator %s", operator)
 	}
 }

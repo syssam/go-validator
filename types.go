@@ -15,10 +15,10 @@ type UnsupportedTypeError struct {
 type stringValues []reflect.Value
 
 // ValidateFunc is
-type ValidateFunc func(v reflect.Value) bool
+type ValidateFunc func(v reflect.Value) (bool, error)
 
 // ParamValidateFunc is
-type ParamValidateFunc func(v reflect.Value, params []string) bool
+type ParamValidateFunc func(v reflect.Value, params []string) (bool, error)
 
 // StringValidateFunc is
 type StringValidateFunc func(str string) bool
@@ -67,7 +67,7 @@ var ParamRuleMap = map[string]ParamValidateFunc{
 	"size":          validateSize,
 }
 
-// StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when refelect type is string.
+// StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when reflect type is string.
 var StringRulesMap = map[string]StringValidateFunc{
 	"numeric":          IsNumeric,
 	"int":              IsInt,
@@ -87,7 +87,7 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"uuid4":            ValidateUUID4,
 	"uuid5":            ValidateUUID5,
 	"uuid":             ValidateUUID,
-	"url":             ValidateURL,
+	"url":              ValidateURL,
 }
 
 // Mimes is a map of extension to MIME types.

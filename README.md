@@ -1,8 +1,9 @@
 <h1>go-validator</h1>
 <p>
-  <a href='https://travis-ci.org/syssam/go-validator/builds'><img src='https://travis-ci.org/syssam/go-validator.svg?branch=master' alt='Travis Status' /></a>
+  <a href='https://github.com/syssam/go-validator/actions/workflows/ci.yml'><img src='https://github.com/syssam/go-validator/actions/workflows/ci.yml/badge.svg' alt='CI Status' /></a>
   <a href="https://goreportcard.com/report/github.com/syssam/go-validator" rel="nofollow"><img src="https://goreportcard.com/badge/github.com/syssam/go-validator" alt="Go Report Card" data-canonical-src="https://goreportcard.com/badge/github.com/syssam/go-validator" style="max-width:100%;"></a>
   <a href="https://godoc.org/github.com/syssam/go-validator" rel="nofollow"><img src="https://godoc.org/github.com/syssam/go-validator?status.svg" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/syssam/go-validator?status.svg" style="max-width:100%;"></a>
+  <a href="https://codecov.io/gh/syssam/go-validator"><img src="https://codecov.io/gh/syssam/go-validator/branch/master/graph/badge.svg" alt="Code Coverage"/></a>
 </p>
 <p>A package of validators and sanitizers for strings, structs and collections.</p>
 <p>features:</p>
@@ -160,24 +161,24 @@
     IsInt(str string) bool
     IsFloat(str string) bool
     IsNull(str string) bool
-    ValidateBetween(i interface{}, params []string) bool
-    ValidateDigitsBetween(i interface{}, params []string) bool
+    ValidateBetween(i interface{}, params []string) (bool, error)
+    ValidateDigitsBetween(i interface{}, params []string) (bool, error)
     ValidateDigitsBetweenInt64(value, left, right int64) bool
     ValidateDigitsBetweenFloat64(value, left, right float64) bool
-    ValidateGt(i interface{}, a interface{}) bool
+    ValidateGt(i interface{}, a interface{}) (bool, error)
     ValidateGtFloat64(v, param float64) bool
-    ValidateGte(i interface{}, a interface{}) bool
+    ValidateGte(i interface{}, a interface{}) (bool, error)
     ValidateGteFloat64(v, param float64) bool
-    ValidateLt(i interface{}, a interface{}) bool
+    ValidateLt(i interface{}, a interface{}) (bool, error)
     ValidateLtFloat64(v, param float64) bool
-    ValidateLte(i interface{}, a interface{}) bool
+    ValidateLte(i interface{}, a interface{}) (bool, error)
     ValidateLteFloat64(v, param float64) bool
     ValidateRequired(i interface{}) bool
-    ValidateMin(i interface{}, params []string) bool
+    ValidateMin(i interface{}, params []string) (bool, error)
     ValidateMinFloat64(v, param float64) bool
-    ValidateMax(i interface{}, params []string) bool
+    ValidateMax(i interface{}, params []string) (bool, error)
     ValidateMaxFloat64(v, param float64) bool
-    ValidateSize(i interface{}, params []string) bool
+    ValidateSize(i interface{}, params []string) (bool, error)
     ValidateDistinct(i interface{}) bool
     ValidateEmail(str string) bool
     ValidateAlpha(str string) bool

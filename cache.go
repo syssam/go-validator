@@ -125,6 +125,7 @@ func typefields(t reflect.Type) []field {
 						name = sf.Name
 					}
 
+					count[f.typ]++
 					requiredTags, otherValidTags, defaultAttribute := f.parseTagIntoSlice(validTag, ft)
 
 					fields = append(fields, field{
@@ -206,20 +207,22 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 			}
 			continue
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+			messageParameters, _ := f.parseMessageParameterIntoSlice(tag[0], params...)
 			requiredTags = append(requiredTags, &ValidTag{
 				name:              tag[0],
 				params:            params,
 				messageName:       f.parseMessageName(tag[0], ft),
-				messageParameters: f.parseMessageParameterIntoSlice(tag[0], params...),
+				messageParameters: messageParameters,
 			})
 			continue
 		}
 
+		messageParameters, _ := f.parseMessageParameterIntoSlice(tag[0], params...)
 		otherValidTags = append(otherValidTags, &ValidTag{
 			name:              tag[0],
 			params:            params,
 			messageName:       f.parseMessageName(tag[0], ft),
-			messageParameters: f.parseMessageParameterIntoSlice(tag[0], params...),
+			messageParameters: messageParameters,
 		})
 	}
 
@@ -245,12 +248,8 @@ func (f *field) isvalidTag(s string) bool {
 	return true
 }
 
-func (f *field) isvalidAttribute(s string) bool {
-	if s == "" {
-		return false
-	}
-
-	return true
+func (f *field) isValidAttribute(s string) bool {
+	return s != ""
 }
 
 func (f *field) parseMessageName(rule string, ft reflect.Type) string {
@@ -287,12 +286,13 @@ type messageParameter struct {
 // A MessageParameters represents store message parameter into field struct.
 type MessageParameters []messageParameter
 
-func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) MessageParameters {
+func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) (MessageParameters, error) {
 	var messageParameters MessageParameters
+
 	switch rule {
 	case "requiredUnless":
 		if len(params) < 2 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 
 		first := true
@@ -318,7 +318,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	case "between", "digitsBetween":
 		if len(params) != 2 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 
 		messageParameters = append(
@@ -333,7 +333,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	case "gt", "gte", "lt", "lte":
 		if len(params) != 1 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 
 		messageParameters = append(
@@ -345,7 +345,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	case "max":
 		if len(params) != 1 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 
 		messageParameters = append(
@@ -357,7 +357,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	case "min":
 		if len(params) != 1 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 
 		messageParameters = append(
@@ -369,7 +369,7 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	case "size":
 		if len(params) != 1 {
-			panic(fmt.Sprintf("validator: " + rule + " format is not valid"))
+			return nil, fmt.Errorf("validator: " + rule + " format is not valid")
 		}
 		messageParameters = append(
 			messageParameters,
@@ -380,9 +380,9 @@ func (f *field) parseMessageParameterIntoSlice(rule string, params ...string) Me
 		)
 	}
 
-	if messageParameters != nil && len(messageParameters) > 0 {
-		return messageParameters
+	if len(messageParameters) > 0 {
+		return messageParameters, nil
 	}
 
-	return nil
+	return nil, nil
 }

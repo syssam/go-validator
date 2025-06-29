@@ -1,3 +1,3 @@
 module github.com/syssam/go-validator
 
-go 1.14
+go 1.19

@@ -24,21 +24,21 @@ func InString(str string, params []string) bool {
 	return false
 }
 
-//  compareString determine if a comparison passes between the given values.
-func compareString(first string, second int64, operator string) bool {
+// compareString determine if a comparison passes between the given values.
+func compareString(first string, second int64, operator string) (bool, error) {
 	switch operator {
 	case "<":
-		return int64(utf8.RuneCountInString(first)) < second
+		return int64(utf8.RuneCountInString(first)) < second, nil
 	case ">":
-		return int64(utf8.RuneCountInString(first)) > second
+		return int64(utf8.RuneCountInString(first)) > second, nil
 	case "<=":
-		return int64(utf8.RuneCountInString(first)) <= second
+		return int64(utf8.RuneCountInString(first)) <= second, nil
 	case ">=":
-		return int64(utf8.RuneCountInString(first)) >= second
+		return int64(utf8.RuneCountInString(first)) >= second, nil
 	case "==":
-		return int64(utf8.RuneCountInString(first)) == second
+		return int64(utf8.RuneCountInString(first)) == second, nil
 	default:
-		panic(fmt.Sprintf("validator: compareString unsupport operator %s", operator))
+		return false, fmt.Errorf("validator: compareString unsupported operator %s", operator)
 	}
 }
 
@@ -71,9 +71,13 @@ func IsNull(str string) bool {
 	return len(str) == 0
 }
 
+// IsEmptyString check if the string is empty.
+func IsEmptyString(str string) bool {
+	return strings.TrimSpace(str) == ""
+}
+
 // ValidateEmail check if the string is an email.
 func ValidateEmail(str string) bool {
-	// TODO uppercase letters are not supported
 	return rxEmail.MatchString(str)
 }
 

@@ -6,10 +6,26 @@ import (
 	"strconv"
 )
 
-// ToString convert the input to a string.
+// ToString convert the input to a string with optimized fast paths.
 func ToString(obj interface{}) string {
-	res := fmt.Sprintf("%v", obj)
-	return string(res)
+	// Fast path for common types to avoid fmt.Sprintf overhead
+	switch v := obj.(type) {
+	case string:
+		return v
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	case bool:
+		return strconv.FormatBool(v)
+	default:
+		// Fallback to fmt.Sprintf for complex types
+		return fmt.Sprintf("%v", obj)
+	}
 }
 
 // ToFloat convert the input string to a float, or 0.0 if the input is not a float.
@@ -36,26 +52,17 @@ func ToInt(value interface{}) (res int64, err error) {
 
 	switch value.(type) {
 	case int, int8, int16, int32, int64:
-		res = val.Int()
+		return val.Int(), nil
 	case uint, uint8, uint16, uint32, uint64:
-		res = int64(val.Uint())
+		return int64(val.Uint()), nil
 	case string:
-		if IsInt(val.String()) {
-			res, err = strconv.ParseInt(val.String(), 0, 64)
-			if err != nil {
-				res = 0
-			}
-		} else {
-			err = fmt.Errorf("math: square root of negative number %g", value)
-			res = 0
+		if !IsInt(val.String()) {
+			return 0, fmt.Errorf("validator: '%s' is not a valid integer", val.String())
 		}
+		return strconv.ParseInt(val.String(), 0, 64)
 	default:
-
-		err = fmt.Errorf("math: square root of negative number %g", value)
-		res = 0
+		return 0, fmt.Errorf("validator: cannot convert %T to int64", value)
 	}
-
-	return
 }
 
 // ToUint convert the input string if the input is not an unit.

@@ -1,0 +1,41 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - structcheck
+    - varcheck
+    - ineffassign
+    - deadcode
+    - typecheck
+    - gofmt
+    - goimports
+    - misspell
+    - gocritic
+    - gocyclo
+    - gosec
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+  gosec:
+    excludes:
+      - G404 # Insecure random number source (rand)
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gosec
+        - gocritic
