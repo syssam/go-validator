@@ -3,7 +3,7 @@
   <a href='https://github.com/syssam/go-validator/actions/workflows/ci.yml'><img src='https://github.com/syssam/go-validator/actions/workflows/ci.yml/badge.svg' alt='CI Status' /></a>
   <a href="https://goreportcard.com/report/github.com/syssam/go-validator" rel="nofollow"><img src="https://goreportcard.com/badge/github.com/syssam/go-validator" alt="Go Report Card" data-canonical-src="https://goreportcard.com/badge/github.com/syssam/go-validator" style="max-width:100%;"></a>
   <a href="https://godoc.org/github.com/syssam/go-validator" rel="nofollow"><img src="https://godoc.org/github.com/syssam/go-validator?status.svg" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/syssam/go-validator?status.svg" style="max-width:100%;"></a>
-  <a href="https://codecov.io/gh/syssam/go-validator"><img src="https://codecov.io/gh/syssam/go-validator/branch/master/graph/badge.svg" alt="Code Coverage"/></a>
+  <a href="https://codecov.io/gh/syssam/go-validator"><img src="https://codecov.io/gh/syssam/go-validator/graph/badge.svg" alt="Code Coverage"/></a>
 </p>
 <p>A package of validators and sanitizers for strings, structs and collections.</p>
 <p>features:</p>
