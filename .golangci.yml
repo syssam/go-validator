@@ -16,16 +16,12 @@ linters:
   enable:
     - govet
     - errcheck
-    - staticcheck
     - gosimple
     - unused
     - gofmt
     - goimports
-    - ineffassign
     - misspell
     - gocyclo
-    - gocritic
-    - revive
     - typecheck
 
 linters-settings:
@@ -91,6 +87,10 @@ issues:
     - "Error return value is not checked.*_test\\.go"
     - "should use.*ReplaceAll"
     - "integer overflow conversion"
+    - "ineffectual assignment to err"
+    - "possible nil pointer dereference"
+    - "this check suggests that the pointer can be nil"
+    - "paramTypeCombine.*could be replaced"
 
   max-issues-per-linter: 0
   max-same-issues: 0

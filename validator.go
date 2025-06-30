@@ -578,6 +578,9 @@ func validateGtParam(v reflect.Value, params []string) (bool, error) {
 			return false, fmt.Errorf("validator: invalid parameter for Gt rule on string field: %w", err)
 		}
 		valid, err = compareString(v.String(), p, ">")
+		if err != nil {
+			return false, fmt.Errorf("validator: comparison error for Gt rule on string field: %w", err)
+		}
 	case reflect.Slice, reflect.Map, reflect.Array:
 		p, err := ToInt(params[0])
 		if err != nil {
@@ -1438,7 +1441,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 }
 
 // validateRequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
-func validateRequiredWith(otherFields []string, currentField reflect.Value, obj reflect.Value) bool {
+func validateRequiredWith(otherFields []string, currentField, obj reflect.Value) bool {
 	if !allFailingRequired(otherFields, obj) {
 		return validateRequired(currentField)
 	}
@@ -1446,7 +1449,7 @@ func validateRequiredWith(otherFields []string, currentField reflect.Value, obj 
 }
 
 // validateRequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
-func validateRequiredWithAll(otherFields []string, currentField reflect.Value, obj reflect.Value) bool {
+func validateRequiredWithAll(otherFields []string, currentField, obj reflect.Value) bool {
 	if !anyFailingRequired(otherFields, obj) {
 		return validateRequired(currentField)
 	}
@@ -1454,7 +1457,7 @@ func validateRequiredWithAll(otherFields []string, currentField reflect.Value, o
 }
 
 // RequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
-func validateRequiredWithout(otherFields []string, currentField reflect.Value, obj reflect.Value) bool {
+func validateRequiredWithout(otherFields []string, currentField, obj reflect.Value) bool {
 	if anyFailingRequired(otherFields, obj) {
 		return validateRequired(currentField)
 	}
@@ -1462,7 +1465,7 @@ func validateRequiredWithout(otherFields []string, currentField reflect.Value, o
 }
 
 // validateRequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
-func validateRequiredWithoutAll(otherFields []string, currentField reflect.Value, obj reflect.Value) bool {
+func validateRequiredWithoutAll(otherFields []string, currentField, obj reflect.Value) bool {
 	if allFailingRequired(otherFields, obj) {
 		return validateRequired(currentField)
 	}

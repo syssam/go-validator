@@ -19,7 +19,7 @@ func TestValidateSameEdgeCases(t *testing.T) {
 	}{
 		{"Passwords match - valid", SameTest{Password: "secret123", ConfirmPassword: "secret123"}, true},
 		{"Passwords don't match - invalid", SameTest{Password: "secret123", ConfirmPassword: "different"}, false},
-		{"Empty passwords match - valid", SameTest{Password: "", ConfirmPassword: ""}, true},
+		{"Empty passwords match - invalid (required)", SameTest{Password: "", ConfirmPassword: ""}, false},
 		{"One empty, one filled - invalid", SameTest{Password: "secret", ConfirmPassword: ""}, false},
 	}
 

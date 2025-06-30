@@ -84,8 +84,7 @@ func TestErrorsGetFieldError(t *testing.T) {
 	result := errs.GetFieldError("email")
 	if result == nil {
 		t.Error("Expected GetFieldError to return the field error")
-	}
-	if result.Name != "email" {
+	} else if result.Name != "email" {
 		t.Error("Expected field error name to be 'email'")
 	}
 

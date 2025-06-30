@@ -9,6 +9,7 @@ func TestNewTranslator(t *testing.T) {
 	translator := NewTranslator()
 	if translator == nil {
 		t.Error("Expected NewTranslator to return a non-nil translator")
+		return
 	}
 	if translator.messages == nil {
 		t.Error("Expected translator.messages to be initialized")

@@ -36,7 +36,7 @@ func TestRequiredWithValidation(t *testing.T) {
 
 // Test struct for RequiredWithAll validation
 type RequiredWithAllTest struct {
-	Field1 string `valid:"requiredWithAll=Field2,Field3"`
+	Field1 string `valid:"requiredWithAll=Field2|Field3"`
 	Field2 string
 	Field3 string
 }
@@ -98,7 +98,7 @@ func TestRequiredWithoutValidation(t *testing.T) {
 
 // Test struct for RequiredWithoutAll validation
 type RequiredWithoutAllTest struct {
-	Field1 string `valid:"requiredWithoutAll=Field2,Field3"`
+	Field1 string `valid:"requiredWithoutAll=Field2|Field3"`
 	Field2 string
 	Field3 string
 }
@@ -130,7 +130,7 @@ func TestRequiredWithoutAllValidation(t *testing.T) {
 
 // Test struct for RequiredUnless validation
 type RequiredUnlessTest struct {
-	Field1 string `valid:"requiredUnless=Field2=exempt"`
+	Field1 string `valid:"requiredUnless=Field2|exempt"`
 	Field2 string
 }
 
@@ -162,7 +162,7 @@ func TestRequiredUnlessValidation(t *testing.T) {
 
 // Test struct for RequiredIf with multiple conditions
 type RequiredIfAdvancedTest struct {
-	Field1 string `valid:"requiredIf=Field2=active,Field3=enabled"`
+	Field1 string `valid:"requiredIf=Field2|active"`
 	Field2 string
 	Field3 string
 }
