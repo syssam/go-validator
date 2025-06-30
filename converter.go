@@ -2,7 +2,7 @@ package validator
 
 import (
 	"fmt"
-	"reflect"
+	"math"
 	"strconv"
 )
 
@@ -48,20 +48,37 @@ func ToBool(str string) bool {
 
 // ToInt convert the input string or any int type to an integer type 64, or 0 if the input is not an integer.
 func ToInt(value interface{}) (res int64, err error) {
-	val := reflect.ValueOf(value)
-
-	switch value.(type) {
-	case int, int8, int16, int32, int64:
-		return val.Int(), nil
-	case uint, uint8, uint16, uint32, uint64:
-		return int64(val.Uint()), nil
-	case string:
-		if !IsInt(val.String()) {
-			return 0, fmt.Errorf("validator: '%s' is not a valid integer", val.String())
+	switch v := value.(type) {
+	case int:
+		return int64(v), nil
+	case int8:
+		return int64(v), nil
+	case int16:
+		return int64(v), nil
+	case int32:
+		return int64(v), nil
+	case int64:
+		return v, nil
+	case uint:
+		if v > math.MaxInt64 {
+			return 0, fmt.Errorf("value %v exceeds int64 maximum", v)
 		}
-		return strconv.ParseInt(val.String(), 0, 64)
+		return int64(v), nil
+	case uint8:
+		return int64(v), nil
+	case uint16:
+		return int64(v), nil
+	case uint32:
+		return int64(v), nil
+	case uint64:
+		if v > math.MaxInt64 {
+			return 0, fmt.Errorf("value %v exceeds int64 maximum", v)
+		}
+		return int64(v), nil
+	case string:
+		return strconv.ParseInt(v, 10, 64)
 	default:
-		return 0, fmt.Errorf("validator: cannot convert %T to int64", value)
+		return 0, fmt.Errorf("unable to convert %T to int64", value)
 	}
 }
 

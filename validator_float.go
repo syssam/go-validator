@@ -41,7 +41,7 @@ func ValidateGtFloat64(v, param float64) bool {
 }
 
 // compareFloat64 determines if a comparison passes between the given values.
-func compareFloat64(first float64, second float64, operator string) (bool, error) {
+func compareFloat64(first, second float64, operator string) (bool, error) {
 	switch operator {
 	case "<":
 		return first < second, nil

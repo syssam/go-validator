@@ -1,1 +1,176 @@
-.vscode
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+*.prof
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Build directories
+build/
+dist/
+bin/
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Vim
+*.swp
+*.swo
+*.tmp
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Testing and Coverage
+coverage.out
+coverage.html
+*.cover
+.coverage/
+coverage/
+test-results/
+*.coverprofile
+
+# Benchmarking
+*.bench
+benchmarks/
+benchmark-results/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Configuration files (if they contain secrets)
+config.json
+config.yml
+config.yaml
+secrets.json
+
+# Documentation builds
+docs/_build/
+docs/site/
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Backup files
+*.bak
+*.backup
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+.go-cache/
+
+# Generated files
+*.pb.go
+*.gen.go
+
+# Protobuf files
+*.pb
+
+# Docker
+.dockerignore
+Dockerfile.local
+
+# Kubernetes
+*.kubeconfig
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+
+# Local development
+local/
+.local/
+dev/
+
+# Ignore CLAUDE.md if you decide not to include it
+# CLAUDE.md
+
+# Security scan results
+.gosec/

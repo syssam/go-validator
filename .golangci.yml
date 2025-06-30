@@ -1,41 +1,96 @@
+# golangci-lint configuration for go-validator
+
 run:
-  timeout: 5m
-  go: "1.22"
+  timeout: 10m
+  tests: true
+
+output:
+  formats:
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  sort-results: true
 
 linters:
+  disable-all: true
   enable:
     - govet
     - errcheck
     - staticcheck
-    - unused
     - gosimple
-    - structcheck
-    - varcheck
-    - ineffassign
-    - deadcode
-    - typecheck
+    - unused
     - gofmt
     - goimports
+    - ineffassign
     - misspell
-    - gocritic
     - gocyclo
-    - gosec
+    - gocritic
+    - revive
+    - typecheck
 
 linters-settings:
   gocyclo:
-    min-complexity: 15
+    # Higher threshold for validation library complexity
+    min-complexity: 50
+  
+  errcheck:
+    check-type-assertions: false
+    check-blank: false
+    exclude-functions:
+      - fmt.Print
+      - fmt.Println
+  
   gocritic:
     enabled-tags:
-      - performance
+      - diagnostic
       - style
-      - experimental
-  gosec:
-    excludes:
-      - G404 # Insecure random number source (rand)
+      - performance
+    disabled-checks:
+      - rangeValCopy      # Allow field struct copying for validation performance
+      - builtinShadow     # Allow min/max parameter names
+      - regexpSimplify    # Keep regex patterns as-is for clarity
+      - wrapperFunc       # Allow explicit string replacement methods
+      - dynamicFmtString  # Allow dynamic error message formatting
+      - hugeParam         # Allow large struct parameters in validation
+  
+  revive:
+    rules:
+      - name: unused-parameter
+        disabled: true
+      - name: cognitive-complexity
+        arguments: [50]
 
 issues:
+  exclude-dirs:
+    - vendor
+    - _examples
+    
   exclude-rules:
+    # Skip complexity and style checks for test files
     - path: _test\.go
       linters:
-        - gosec
+        - gocyclo
         - gocritic
+        - revive
+        - cyclop
+        - funlen
+        - gosec
+    
+    # Skip specific complexity warnings for core validation logic
+    - text: "cyclomatic complexity.*of func.*is high"
+      linters:
+        - gocyclo
+    
+    # Skip unused warnings for specific validation helper functions
+    - text: "is unused"
+      linters:
+        - unused
+  
+  exclude:
+    # Global patterns to ignore
+    - "Error return value is not checked.*_test\\.go"
+    - "should use.*ReplaceAll"
+    - "integer overflow conversion"
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

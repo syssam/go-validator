@@ -65,6 +65,10 @@ var ParamRuleMap = map[string]ParamValidateFunc{
 	"min":           validateMin,
 	"max":           validateMax,
 	"size":          validateSize,
+	"gt":            validateGtParam,
+	"gte":           validateGteParam,
+	"lt":            validateLtParam,
+	"lte":           validateLteParam,
 }
 
 // StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when reflect type is string.

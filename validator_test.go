@@ -501,7 +501,7 @@ func TestInnerStruct(t *testing.T) {
 		CreditCards:  c,
 	}
 
-	ValidateStruct(u)
+	_ = ValidateStruct(u)
 }
 
 func TestInnerStruct2(t *testing.T) {
@@ -564,7 +564,7 @@ func TestNameSpace(t *testing.T) {
 		CreditCards:  c,
 	}
 
-	ValidateStruct(u)
+	_ = ValidateStruct(u)
 }
 
 func TestIsURL(t *testing.T) {
@@ -1536,4 +1536,305 @@ func TestEdgeCases(t *testing.T) {
 			t.Error("Expected URL without scheme to be invalid")
 		}
 	})
+}
+
+// Additional utility function tests consolidated from small test files
+func TestValidateDigitsBetweenUint64(t *testing.T) {
+	tests := []struct {
+		value    uint64
+		left     uint64
+		right    uint64
+		expected bool
+	}{
+		{5, 1, 10, true},
+		{0, 1, 10, false},
+		{15, 1, 10, false},
+		{1, 1, 10, true},
+		{10, 1, 10, true},
+		{5, 5, 5, true},
+		{5, 10, 1, true}, // Test swapping when left > right
+		{0, 10, 1, false},
+		{15, 10, 1, false},
+		{18446744073709551615, 0, 18446744073709551615, true}, // Max uint64
+	}
+
+	for _, test := range tests {
+		result := ValidateDigitsBetweenUint64(test.value, test.left, test.right)
+		if result != test.expected {
+			t.Errorf("ValidateDigitsBetweenUint64(%d, %d, %d) = %t; expected %t",
+				test.value, test.left, test.right, result, test.expected)
+		}
+	}
+}
+
+func TestCompareUint64(t *testing.T) {
+	tests := []struct {
+		first       uint64
+		second      uint64
+		operator    string
+		expected    bool
+		expectError bool
+	}{
+		{5, 10, "<", true, false},
+		{10, 5, "<", false, false},
+		{5, 10, ">", false, false},
+		{10, 5, ">", true, false},
+		{5, 10, "<=", true, false},
+		{10, 10, "<=", true, false},
+		{15, 10, "<=", false, false},
+		{5, 10, ">=", false, false},
+		{10, 10, ">=", true, false},
+		{15, 10, ">=", true, false},
+		{10, 10, "==", true, false},
+		{10, 5, "==", false, false},
+		{10, 5, "!=", false, true}, // Unsupported operator
+		{10, 5, "invalid", false, true},
+		{0, 18446744073709551615, "<", true, false}, // Test with max uint64
+		{18446744073709551615, 0, ">", true, false}, // Test with max uint64
+	}
+
+	for _, test := range tests {
+		result, err := compareUint64(test.first, test.second, test.operator)
+		if result != test.expected {
+			t.Errorf("compareUint64(%d, %d, %s) = %t; expected %t",
+				test.first, test.second, test.operator, result, test.expected)
+		}
+		if test.expectError && err == nil {
+			t.Errorf("compareUint64(%d, %d, %s) expected error but got nil",
+				test.first, test.second, test.operator)
+		}
+		if !test.expectError && err != nil {
+			t.Errorf("compareUint64(%d, %d, %s) unexpected error: %v",
+				test.first, test.second, test.operator, err)
+		}
+	}
+}
+
+func TestValidateBetweenErrorCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		value     interface{}
+		params    []string
+		expectErr bool
+	}{
+		// Error cases for parameter validation
+		{"Wrong param count", "test", []string{"1"}, true},
+		{"Too many params", "test", []string{"1", "2", "3"}, true},
+		{"String min param error", "test", []string{"invalid", "10"}, true},
+		{"String max param error", "test", []string{"1", "invalid"}, true},
+
+		// Error cases for slice/array/map types
+		{"Slice min param error", []int{1, 2}, []string{"invalid", "10"}, true},
+		{"Slice max param error", []int{1, 2}, []string{"1", "invalid"}, true},
+		{"Map min param error", map[string]int{"a": 1}, []string{"invalid", "10"}, true},
+		{"Map max param error", map[string]int{"a": 1}, []string{"1", "invalid"}, true},
+
+		// Error cases for numeric types
+		{"Int min param error", 5, []string{"invalid", "10"}, true},
+		{"Int max param error", 5, []string{"1", "invalid"}, true},
+		{"Uint min param error", uint(5), []string{"invalid", "10"}, true},
+		{"Uint max param error", uint(5), []string{"1", "invalid"}, true},
+		{"Float min param error", 5.5, []string{"invalid", "10"}, true},
+		{"Float max param error", 5.5, []string{"1", "invalid"}, true},
+
+		// Error cases for unsupported types
+		{"Complex type", complex64(1 + 2i), []string{"1", "10"}, true},
+		{"Chan type", make(chan int), []string{"1", "10"}, true},
+		{"Func type", func() {}, []string{"1", "10"}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			v := reflect.ValueOf(test.value)
+			_, err := validateBetween(v, test.params)
+			if test.expectErr && err == nil {
+				t.Errorf("Expected error for %s", test.name)
+			}
+			if !test.expectErr && err != nil {
+				t.Errorf("Unexpected error for %s: %v", test.name, err)
+			}
+		})
+	}
+}
+
+func TestValidateBetweenAllNumericTypes(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    interface{}
+		params   []string
+		expected bool
+	}{
+		// All integer types
+		{"int8 valid", int8(5), []string{"1", "10"}, true},
+		{"int8 invalid", int8(15), []string{"1", "10"}, false},
+		{"int16 valid", int16(5), []string{"1", "10"}, true},
+		{"int16 invalid", int16(0), []string{"1", "10"}, false},
+		{"int32 valid", int32(5), []string{"1", "10"}, true},
+		{"int32 invalid", int32(15), []string{"1", "10"}, false},
+		{"int64 valid", int64(5), []string{"1", "10"}, true},
+		{"int64 invalid", int64(0), []string{"1", "10"}, false},
+
+		// All unsigned integer types
+		{"uint8 valid", uint8(5), []string{"1", "10"}, true},
+		{"uint8 invalid", uint8(15), []string{"1", "10"}, false},
+		{"uint16 valid", uint16(5), []string{"1", "10"}, true},
+		{"uint16 invalid", uint16(0), []string{"1", "10"}, false},
+		{"uint32 valid", uint32(5), []string{"1", "10"}, true},
+		{"uint32 invalid", uint32(15), []string{"1", "10"}, false},
+		{"uint64 valid", uint64(5), []string{"1", "10"}, true},
+		{"uint64 invalid", uint64(0), []string{"1", "10"}, false},
+		{"uintptr valid", uintptr(5), []string{"1", "10"}, true},
+		{"uintptr invalid", uintptr(15), []string{"1", "10"}, false},
+
+		// All float types
+		{"float32 valid", float32(5.5), []string{"1", "10"}, true},
+		{"float32 invalid", float32(15.5), []string{"1", "10"}, false},
+		{"float64 valid", float64(5.5), []string{"1", "10"}, true},
+		{"float64 invalid", float64(0.5), []string{"1", "10"}, false},
+
+		// Collection types
+		{"slice valid", []string{"a", "b", "c"}, []string{"2", "5"}, true},
+		{"slice invalid", []string{"a"}, []string{"2", "5"}, false},
+		{"array valid", [3]string{"a", "b", "c"}, []string{"2", "5"}, true},
+		{"map valid", map[string]int{"a": 1, "b": 2, "c": 3}, []string{"2", "5"}, true},
+		{"map invalid", map[string]int{"a": 1}, []string{"2", "5"}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			v := reflect.ValueOf(test.value)
+			result, err := validateBetween(v, test.params)
+			if err != nil {
+				t.Errorf("Unexpected error for %s: %v", test.name, err)
+				return
+			}
+			if result != test.expected {
+				t.Errorf("Expected %t for %s, got %t", test.expected, test.name, result)
+			}
+		})
+	}
+}
+
+func TestBasicStringValidationFunctions(t *testing.T) {
+	// Test IsInt and IsFloat
+	if !IsInt("123") {
+		t.Error("Expected IsInt to pass for number string")
+	}
+
+	if IsInt("abc") {
+		t.Error("Expected IsInt to fail for non-number string")
+	}
+
+	if !IsFloat("123.45") {
+		t.Error("Expected IsFloat to pass for float string")
+	}
+
+	if IsFloat("abc") {
+		t.Error("Expected IsFloat to fail for non-float string")
+	}
+
+	// Test ValidateDistinct
+	if !ValidateDistinct([]interface{}{"a", "b", "c"}) {
+		t.Error("Expected distinct values to validate")
+	}
+
+	if ValidateDistinct([]interface{}{"a", "b", "a"}) {
+		t.Error("Expected duplicate values to fail validation")
+	}
+
+	// Test alpha functions
+	if !ValidateAlpha("abc") {
+		t.Error("Expected alpha validation to pass")
+	}
+
+	if ValidateAlpha("abc123") {
+		t.Error("Expected alpha validation to fail with numbers")
+	}
+
+	if !ValidateAlphaNum("abc123") {
+		t.Error("Expected alphanumeric validation to pass")
+	}
+
+	if ValidateAlphaNum("abc123!") {
+		t.Error("Expected alphanumeric validation to fail with symbols")
+	}
+
+	// Test UUID validation functions
+	if !ValidateUUID("550e8400-e29b-41d4-a716-446655440000") {
+		t.Error("Expected UUID validation to pass")
+	}
+
+	if ValidateUUID("invalid-uuid") {
+		t.Error("Expected UUID validation to fail")
+	}
+
+	if !ValidateUUID3("6fa459ea-ee8a-3ca4-894e-db77e160355e") {
+		t.Error("Expected UUID3 validation to pass")
+	}
+
+	if !ValidateUUID4("550e8400-e29b-41d4-a716-446655440000") {
+		t.Error("Expected UUID4 validation to pass")
+	}
+
+	if !ValidateUUID5("6fa459ea-ee8a-5ca4-894e-db77e160355e") {
+		t.Error("Expected UUID5 validation to pass")
+	}
+}
+
+func TestFileValidationFunctions(t *testing.T) {
+	content := []byte("test content")
+
+	// Test ValidateMimeTypes - text content gets detected as text/plain; charset=utf-8
+	if !ValidateMimeTypes(content, []string{"text/plain; charset=utf-8"}) {
+		t.Error("Expected text content to match detected mime type")
+	}
+
+	// Test with non-matching mime type
+	if ValidateMimeTypes(content, []string{"image/jpeg"}) {
+		t.Error("Expected text content to not match image/jpeg mime type")
+	}
+
+	// Test ValidateImage - should fail for text content
+	if ValidateImage(content) {
+		t.Error("Expected non-image content to fail image validation")
+	}
+
+	// Test ValidateMimes - just test that it runs without panic
+	result, err := ValidateMimes(content, []string{"unknown"})
+	if err == nil {
+		_ = result // Function executed successfully
+	}
+}
+
+func TestCompareStringFunctionDirect(t *testing.T) {
+	// Test compareString with different operators
+	result, err := compareString("abc", 3, "==")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if !result {
+		t.Error("Expected string length to equal 3")
+	}
+
+	result, err = compareString("a", 2, "<")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if !result {
+		t.Error("Expected string length to be less than 2")
+	}
+
+	result, err = compareString("abc", 2, ">")
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	if !result {
+		t.Error("Expected string length to be greater than 2")
+	}
+
+	// Test invalid operator
+	_, err = compareString("abc", 3, "invalid")
+	if err == nil {
+		t.Error("Expected error for invalid operator")
+	}
 }

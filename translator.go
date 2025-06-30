@@ -61,10 +61,10 @@ func (t *Translator) Trans(errors Errors, language string) Errors {
 				attribute = fieldError.DefaultAttribute
 			}
 
-			message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
+			message = strings.ReplaceAll(message, "{{.Attribute}}", attribute)
 
 			for _, parameter := range fieldError.MessageParameters {
-				message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
+				message = strings.ReplaceAll(message, "{{."+parameter.Key+"}}", parameter.Value)
 			}
 
 			errors[i].(*FieldError).SetMessage(message)

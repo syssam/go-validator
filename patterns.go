@@ -11,13 +11,22 @@ const (
 	AlphaUnicode     string = "^[\\p{L}]+$"
 	AlphaNumUnicode  string = "^[\\p{L}\\p{M}\\p{N}]+$"
 	AlphaDashUnicode string = "^[\\p{L}\\p{M}\\p{N}_-]+$"
-	Numeric          string = "^[0-9]+$"
+	Numeric          string = "^\\d+$"
 	Int              string = "^(?:[-+]?(?:0|[1-9][0-9]*))$"
 	Float            string = "^(?:[-+]?(?:[0-9]+))?(?:\\.[0-9]*)?(?:[eE][\\+\\-]?(?:[0-9]+))?$"
+	Hexadecimal      string = "^[0-9a-fA-F]+$"
+	HexColor         string = "^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
+	RGBColor         string = "^rgb\\(\\s*(?:(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5])\\s*,\\s*(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5])\\s*,\\s*(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5]))\\s*\\)$"
+	RGBAColor        string = "^rgba\\(\\s*(?:(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5])\\s*,\\s*(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5])\\s*,\\s*(?:0|[1-9]\\d?|1\\d\\d?|2[0-4]\\d|25[0-5])\\s*,\\s*(?:(?:0\\.[0-9]*)|[01]))\\s*\\)$"
+	HSLColor         string = "^hsl\\(\\s*(?:0|[1-9]\\d?|[12]\\d\\d|3[0-5]\\d|360)\\s*,\\s*(?:(?:0|[1-9]\\d?|100)%)\\s*,\\s*(?:(?:0|[1-9]\\d?|100)%)\\s*\\)$"
+	HSLAColor        string = "^hsla\\(\\s*(?:0|[1-9]\\d?|[12]\\d\\d|3[0-5]\\d|360)\\s*,\\s*(?:(?:0|[1-9]\\d?|100)%)\\s*,\\s*(?:(?:0|[1-9]\\d?|100)%)\\s*,\\s*(?:(?:0\\.[0-9]*)|[01])\\s*\\)$"
 	UUID3            string = "^[0-9a-f]{8}-[0-9a-f]{4}-3[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$"
 	UUID4            string = "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 	UUID5            string = "^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 	UUID             string = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+	CreditCard       string = "^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3[0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})$"
+	ISBN10           string = "^(?:[0-9]{9}X|[0-9]{10})$"
+	ISBN13           string = "^(?:97[89][0-9]{10})$"
 	IP               string = `(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))`
 	URLSchema        string = `((ftp|tcp|udp|wss?|https?):\/\/)`
 	URLUsername      string = `(\S+(:\S*)?@)`
@@ -38,8 +47,16 @@ const (
 	Unix
 )
 
+//nolint:unused // Regex patterns kept for potential future use
 var (
 	rxEmail            = regexp.MustCompile(Email)
+	rxCreditCard       = regexp.MustCompile(CreditCard)
+	rxISBN10           = regexp.MustCompile(ISBN10)
+	rxISBN13           = regexp.MustCompile(ISBN13)
+	rxUUID3            = regexp.MustCompile(UUID3)
+	rxUUID4            = regexp.MustCompile(UUID4)
+	rxUUID5            = regexp.MustCompile(UUID5)
+	rxUUID             = regexp.MustCompile(UUID)
 	rxAlpha            = regexp.MustCompile(Alpha)
 	rxAlphaNum         = regexp.MustCompile(AlphaNum)
 	rxAlphaDash        = regexp.MustCompile(AlphaDash)
@@ -49,9 +66,11 @@ var (
 	rxNumeric          = regexp.MustCompile(Numeric)
 	rxInt              = regexp.MustCompile(Int)
 	rxFloat            = regexp.MustCompile(Float)
-	rxUUID3            = regexp.MustCompile(UUID3)
-	rxUUID4            = regexp.MustCompile(UUID4)
-	rxUUID5            = regexp.MustCompile(UUID5)
-	rxUUID             = regexp.MustCompile(UUID)
+	rxHexadecimal      = regexp.MustCompile(Hexadecimal)
+	rxHexColor         = regexp.MustCompile(HexColor)
+	rxRGBColor         = regexp.MustCompile(RGBColor)
+	rxRGBAColor        = regexp.MustCompile(RGBAColor)
+	rxHSLColor         = regexp.MustCompile(HSLColor)
+	rxHSLAColor        = regexp.MustCompile(HSLAColor)
 	rxURL              = regexp.MustCompile(URL)
 )

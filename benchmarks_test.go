@@ -46,6 +46,7 @@ func BenchmarkErrorsUtilityMethods(t *testing.B) {
 
 	invalidData := TestStruct{Name: "", Email: "invalid", Age: 16}
 	err := ValidateStruct(invalidData)
+	//nolint:errcheck // Safe type assertion in benchmark context
 	errors := err.(Errors)
 
 	t.ResetTimer()
@@ -174,6 +175,7 @@ func BenchmarkErrorGrouping(t *testing.B) {
 		t.Fatal("Expected validation errors")
 	}
 
+	//nolint:errcheck // Safe type assertion in benchmark context
 	errors := err.(Errors)
 
 	t.ResetTimer()
@@ -199,6 +201,7 @@ func BenchmarkFuncErrorHandling(t *testing.B) {
 	for i := 0; i < t.N; i++ {
 		err := ValidateStruct(data)
 		if err != nil {
+			//nolint:errcheck // Safe type assertion in benchmark context
 			errors := err.(Errors)
 			// Benchmark accessing FuncError methods
 			for _, e := range errors {

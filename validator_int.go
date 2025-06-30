@@ -11,7 +11,7 @@ func ValidateDigitsBetweenInt64(value, left, right int64) bool {
 }
 
 // compareInt64 determine if a comparison passes between the given values.
-func compareInt64(first int64, second int64, operator string) (bool, error) {
+func compareInt64(first, second int64, operator string) (bool, error) {
 	switch operator {
 	case "<":
 		return first < second, nil

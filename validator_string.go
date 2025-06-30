@@ -9,7 +9,7 @@ import (
 )
 
 // ValidateBetweenString is
-func ValidateBetweenString(v string, left int64, right int64) bool {
+func ValidateBetweenString(v string, left, right int64) bool {
 	return ValidateDigitsBetweenInt64(int64(utf8.RuneCountInString(v)), left, right)
 }
 
@@ -68,7 +68,7 @@ func IsFloat(str string) bool {
 
 // IsNull check if the string is null.
 func IsNull(str string) bool {
-	return len(str) == 0
+	return str == ""
 }
 
 // IsEmptyString check if the string is empty.
