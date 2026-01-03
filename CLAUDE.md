@@ -31,10 +31,15 @@ The library uses a sophisticated error handling system:
 
 ### Validation Flow
 
-1. Struct validation uses reflection to process struct tags
-2. Each field is validated against its `valid` tag rules
-3. Custom validation functions can be registered via `CustomTypeRuleMap`
-4. Errors are collected and returned as an `Errors` slice
+1. **Entry Point**: `ValidateStruct(s interface{})` delegates to the default `Validator` instance
+2. **Field Caching**: `cachedTypefields()` caches field metadata in thread-safe `sync.Map` to reduce reflection overhead
+3. **Tag Parsing**: Parses `valid:"rule1,rule2=param"` struct tags into `ValidTag` structs
+4. **Rule Dispatch**: Routes validation to the appropriate rule map based on rule type:
+   - `RuleMap` - No-parameter rules (e.g., `distinct`)
+   - `ParamRuleMap` - Parameter rules (e.g., `between=1|10`, `min=5`)
+   - `StringRulesMap` - String-specific pattern rules (e.g., `email`, `alpha`, `uuid`)
+   - `CustomTypeRuleMap` - User-defined custom validators (thread-safe)
+5. **Error Collection**: All validation errors are accumulated in an `Errors` slice
 
 ## Development Commands
 
@@ -220,44 +225,11 @@ validator.MessageMap["required"] = "Ce champ est requis"
 - Test with `-race` flag for concurrent usage validation
 - Consider using `strings.Builder` with `Grow()` for string concatenation in custom validators
 
-## Additional Components
+## Adding New Validation Rules
 
-### Support Files
-- **`converter.go`**: Type conversion utilities for validation parameters
-- **`message.go`**: Default error message definitions and message mapping
-- **`patterns.go`**: Regular expression patterns for string validation rules
-- **`LICENSE`**: MIT license for the project
-- **`README.md`**: Comprehensive documentation with examples and feature descriptions
-
-### Module Information
-- **Module**: `github.com/syssam/go-validator`
-- **Go Version**: Requires Go 1.19+
-- **Dependencies**: Pure Go implementation with no external dependencies
-
-## Quick Start for Development
-
-1. **Clone and setup**:
-   ```bash
-   git clone https://github.com/syssam/go-validator
-   cd go-validator
-   go mod tidy
-   ```
-
-2. **Run tests to verify setup**:
-   ```bash
-   go test -v
-   go test -bench=. -benchmem
-   ```
-
-3. **Study examples**:
-   ```bash
-   cd _examples/simple && go run main.go
-   cd ../gin && go run main.go gin_validator.go
-   ```
-
-4. **Common development workflow**:
-   - Add new validation rules in appropriate `validator_*.go` files
-   - Update `patterns.go` for regex-based rules
-   - Add tests in `validator_test.go`
-   - Add benchmarks in `benchmarks_test.go`
-   - Update `message.go` for error messages
+1. **No-parameter rules** (e.g., `distinct`): Add to `RuleMap` in `types.go`
+2. **Parameter rules** (e.g., `min=value`): Add to `ParamRuleMap` in `types.go`
+3. **String pattern rules** (e.g., `email`): Add regex to `patterns.go`, function to `validator_string.go`, register in `StringRulesMap`
+4. **Error messages**: Add default message to `MessageMap` in `message.go`
+5. **Tests**: Add test cases in `validator_test.go`
+6. **Benchmarks**: Add performance tests in `benchmarks_test.go` if the rule involves complex logic

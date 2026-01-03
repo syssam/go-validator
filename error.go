@@ -89,7 +89,7 @@ type ErrorResponse struct {
 }
 
 var errorResponsePool = sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		slice := make([]ErrorResponse, 0, 10)
 		return &slice
 	},

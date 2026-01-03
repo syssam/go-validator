@@ -1838,3 +1838,469 @@ func TestCompareStringFunctionDirect(t *testing.T) {
 		t.Error("Expected error for invalid operator")
 	}
 }
+
+// =============================================================================
+// Tests for in/notIn validators
+// =============================================================================
+
+type InValidationStruct struct {
+	Status string `valid:"in=active|inactive|pending"`
+}
+
+type NotInValidationStruct struct {
+	Status string `valid:"notIn=banned|deleted"`
+}
+
+type InIntValidationStruct struct {
+	Priority int `valid:"in=1|2|3"`
+}
+
+func TestInValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   InValidationStruct
+		wantErr bool
+	}{
+		{"Value in list", InValidationStruct{"active"}, false},
+		{"Another value in list", InValidationStruct{"pending"}, false},
+		{"Value not in list", InValidationStruct{"deleted"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNotInValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   NotInValidationStruct
+		wantErr bool
+	}{
+		{"Value not in list", NotInValidationStruct{"active"}, false},
+		{"Value in list", NotInValidationStruct{"banned"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestInIntValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   InIntValidationStruct
+		wantErr bool
+	}{
+		{"Int value in list", InIntValidationStruct{1}, false},
+		{"Int value in list 2", InIntValidationStruct{3}, false},
+		{"Int value not in list", InIntValidationStruct{5}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for confirmed/different validators
+// =============================================================================
+
+type ConfirmedStruct struct {
+	Password             string `valid:"confirmed"`
+	PasswordConfirmation string
+}
+
+type DifferentStruct struct {
+	OldPassword string
+	NewPassword string `valid:"different=OldPassword"`
+}
+
+func TestConfirmedValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   ConfirmedStruct
+		wantErr bool
+	}{
+		{"Matching passwords", ConfirmedStruct{"secret123", "secret123"}, false},
+		{"Non-matching passwords", ConfirmedStruct{"secret123", "different"}, true},
+		{"Empty confirmation", ConfirmedStruct{"secret123", ""}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDifferentValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   DifferentStruct
+		wantErr bool
+	}{
+		{"Different values", DifferentStruct{"old123", "new456"}, false},
+		{"Same values", DifferentStruct{"same123", "same123"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for JSON validation
+// =============================================================================
+
+type JSONValidationStruct struct {
+	Config string `valid:"json"`
+}
+
+func TestJSONValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   JSONValidationStruct
+		wantErr bool
+	}{
+		{"Valid JSON object", JSONValidationStruct{`{"key":"value"}`}, false},
+		{"Valid JSON array", JSONValidationStruct{`[1,2,3]`}, false},
+		{"Valid JSON string", JSONValidationStruct{`"hello"`}, false},
+		{"Valid JSON number", JSONValidationStruct{`123`}, false},
+		{"Valid JSON boolean", JSONValidationStruct{`true`}, false},
+		{"Valid JSON null", JSONValidationStruct{`null`}, false},
+		{"Invalid JSON", JSONValidationStruct{`{invalid}`}, true},
+		{"Empty string", JSONValidationStruct{""}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for regex validation
+// =============================================================================
+
+type RegexValidationStruct struct {
+	Code string `valid:"regex=^[A-Z]{3}-[0-9]{4}$"`
+}
+
+type NotRegexValidationStruct struct {
+	Text string `valid:"notRegex=<script>"`
+}
+
+func TestRegexValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   RegexValidationStruct
+		wantErr bool
+	}{
+		{"Matches regex", RegexValidationStruct{"ABC-1234"}, false},
+		{"Does not match regex", RegexValidationStruct{"abc-1234"}, true},
+		{"Invalid format", RegexValidationStruct{"ABCD-12345"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNotRegexValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   NotRegexValidationStruct
+		wantErr bool
+	}{
+		{"Does not contain script tag", NotRegexValidationStruct{"Hello World"}, false},
+		{"Contains script tag", NotRegexValidationStruct{"<script>alert('xss')</script>"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for type validators
+// =============================================================================
+
+type BooleanValidationStruct struct {
+	Active interface{} `valid:"boolean"`
+}
+
+type ArrayValidationStruct struct {
+	Items []int `valid:"array"`
+}
+
+type FilledValidationStruct struct {
+	Name string `valid:"filled"`
+}
+
+func TestBooleanValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   BooleanValidationStruct
+		wantErr bool
+	}{
+		{"True bool", BooleanValidationStruct{true}, false},
+		{"False bool", BooleanValidationStruct{false}, false},
+		{"String 1", BooleanValidationStruct{"1"}, false},
+		{"String 0", BooleanValidationStruct{"0"}, false},
+		{"String true", BooleanValidationStruct{"true"}, false},
+		{"String false", BooleanValidationStruct{"false"}, false},
+		{"String yes", BooleanValidationStruct{"yes"}, false},
+		{"String no", BooleanValidationStruct{"no"}, false},
+		{"Int 1", BooleanValidationStruct{1}, false},
+		{"Int 0", BooleanValidationStruct{0}, false},
+		{"Invalid string", BooleanValidationStruct{"maybe"}, true},
+		{"Invalid int", BooleanValidationStruct{5}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestArrayValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   ArrayValidationStruct
+		wantErr bool
+	}{
+		{"Valid array", ArrayValidationStruct{[]int{1, 2, 3}}, false},
+		{"Empty array", ArrayValidationStruct{[]int{}}, false},
+		{"Nil array", ArrayValidationStruct{nil}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestFilledValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   FilledValidationStruct
+		wantErr bool
+	}{
+		{"Filled string", FilledValidationStruct{"hello"}, false},
+		{"Empty string", FilledValidationStruct{""}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for nullable meta-rule
+// =============================================================================
+
+type NullableStruct struct {
+	Email string `valid:"nullable,email"`
+}
+
+type NullableRequiredStruct struct {
+	Email string `valid:"required,nullable,email"`
+}
+
+type NullableIntStruct struct {
+	Age int `valid:"nullable,min=18"`
+}
+
+func TestNullableValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   NullableStruct
+		wantErr bool
+	}{
+		{"Valid email", NullableStruct{"test@example.com"}, false},
+		{"Empty email with nullable", NullableStruct{""}, false},
+		{"Invalid email", NullableStruct{"not-an-email"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNullableRequiredValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   NullableRequiredStruct
+		wantErr bool
+	}{
+		{"Valid email", NullableRequiredStruct{"test@example.com"}, false},
+		{"Empty email with required", NullableRequiredStruct{""}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNullableIntValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   NullableIntStruct
+		wantErr bool
+	}{
+		{"Valid age", NullableIntStruct{25}, false},
+		{"Zero age with nullable", NullableIntStruct{0}, false},
+		{"Invalid age (under min)", NullableIntStruct{15}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateStruct(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateStruct() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// Tests for direct function calls
+// =============================================================================
+
+func TestValidateInDirect(t *testing.T) {
+	valid, err := ValidateIn("active", []string{"active", "inactive", "pending"})
+	if err != nil || !valid {
+		t.Error("Expected value to be in list")
+	}
+
+	valid, err = ValidateIn("deleted", []string{"active", "inactive", "pending"})
+	if err != nil || valid {
+		t.Error("Expected value to not be in list")
+	}
+}
+
+func TestValidateNotInDirect(t *testing.T) {
+	valid, err := ValidateNotIn("active", []string{"banned", "deleted"})
+	if err != nil || !valid {
+		t.Error("Expected value to not be in list")
+	}
+
+	valid, err = ValidateNotIn("banned", []string{"banned", "deleted"})
+	if err != nil || valid {
+		t.Error("Expected value to be in list")
+	}
+}
+
+func TestValidateJSONDirect(t *testing.T) {
+	valid, err := ValidateJSON(`{"key":"value"}`)
+	if err != nil || !valid {
+		t.Error("Expected valid JSON")
+	}
+
+	valid, err = ValidateJSON(`{invalid}`)
+	if err != nil || valid {
+		t.Error("Expected invalid JSON")
+	}
+}
+
+func TestValidateRegexDirect(t *testing.T) {
+	valid, err := ValidateRegex("ABC-1234", []string{`^[A-Z]{3}-[0-9]{4}$`})
+	if err != nil || !valid {
+		t.Error("Expected regex match")
+	}
+
+	valid, err = ValidateRegex("abc-1234", []string{`^[A-Z]{3}-[0-9]{4}$`})
+	if err != nil || valid {
+		t.Error("Expected regex no match")
+	}
+}
+
+func TestValidateBooleanDirect(t *testing.T) {
+	valid, err := ValidateBoolean(true)
+	if err != nil || !valid {
+		t.Error("Expected valid boolean")
+	}
+
+	valid, err = ValidateBoolean("yes")
+	if err != nil || !valid {
+		t.Error("Expected 'yes' to be valid boolean")
+	}
+
+	valid, err = ValidateBoolean("maybe")
+	if err != nil || valid {
+		t.Error("Expected 'maybe' to be invalid boolean")
+	}
+}
+
+func TestValidateFilledDirect(t *testing.T) {
+	valid, err := ValidateFilled("hello")
+	if err != nil || !valid {
+		t.Error("Expected filled value")
+	}
+
+	valid, err = ValidateFilled("")
+	if err != nil || valid {
+		t.Error("Expected empty value to fail filled validation")
+	}
+}

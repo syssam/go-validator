@@ -29,6 +29,7 @@
 <h2>Available Validation Rules</h2>
 <ul>
     <li><a>omitempty</a></li>
+    <li><a>nullable</a></li>
     <li><a>required</a></li>
     <li><a>requiredIf</a></li>
     <li><a>requiredUnless</a></li>
@@ -66,6 +67,20 @@
     <li><a>uuid4</a></li>
     <li><a>uuid5</a></li>
     <li><a>uuid</a></li>
+    <li><a>url</a></li>
+    <li><a>date</a></li>
+    <li><a>dateFormat</a></li>
+    <li><a>after</a></li>
+    <li><a>afterOrEqual</a></li>
+    <li><a>before</a></li>
+    <li><a>beforeOrEqual</a></li>
+    <li><a>regex</a></li>
+    <li><a>notRegex</a></li>
+    <li><a>in</a></li>
+    <li><a>notIn</a></li>
+    <li><a>boolean</a></li>
+    <li><a>accepted</a></li>
+    <li><a>declined</a></li>
 </ul>
 <h4 id="rule-omitempty">omitempty</h4>
 <p>The "omitempty" option specifies that the field should be omitted from the encoding if the field has an empty value, defined as false, 0, a nil pointer, a nil interface value, and any empty array, slice, map, or string.</p>
@@ -146,6 +161,87 @@
 <p>The field under validation must be an uuid5.</p>
 <h4 id="rule-ipv6">uuid</h4>
 <p>The field under validation must be an uuid.</p>
+<h4 id="rule-url">url</h4>
+<p>The field under validation must be a valid URL.</p>
+<h4 id="rule-date">date</h4>
+<p>The field under validation must be a valid date.</p>
+<h4 id="rule-dateFormat">dateFormat=format</h4>
+<p>The field under validation must match the given format. Example: <code>dateFormat=2006-01-02</code></p>
+<h4 id="rule-after">after=date</h4>
+<p>The field under validation must be a date after the given date. Supports relative dates.</p>
+<pre>
+type BookingForm struct {
+    CheckIn time.Time `valid:"after=today"`
+    Event   time.Time `valid:"after=tomorrow"`
+    Future  time.Time `valid:"after=today+7d"`
+}
+</pre>
+<p><strong>Relative date keywords:</strong></p>
+<ul>
+  <li><code>today</code> - Today at midnight</li>
+  <li><code>tomorrow</code> - Tomorrow at midnight</li>
+  <li><code>yesterday</code> - Yesterday at midnight</li>
+  <li><code>now</code> - Current time</li>
+  <li><code>today+7d</code> - 7 days from today</li>
+  <li><code>today-1m</code> - 1 month ago</li>
+  <li><code>today-18y</code> - 18 years ago</li>
+</ul>
+<h4 id="rule-afterOrEqual">afterOrEqual=date</h4>
+<p>The field under validation must be a date after or equal to the given date. Supports relative dates.</p>
+<h4 id="rule-before">before=date</h4>
+<p>The field under validation must be a date before the given date. Supports relative dates.</p>
+<pre>
+type UserForm struct {
+    BirthDate time.Time `valid:"before=today-18y"` // Must be 18 years or older
+}
+</pre>
+<h4 id="rule-beforeOrEqual">beforeOrEqual=date</h4>
+<p>The field under validation must be a date before or equal to the given date. Supports relative dates.</p>
+<h4 id="rule-regex">regex=pattern</h4>
+<p>The field under validation must match the given regular expression.</p>
+<pre>
+type Form struct {
+    Code string `valid:"regex=^[A-Z]{3}-[0-9]{4}$"`
+}
+</pre>
+<h4 id="rule-notRegex">notRegex=pattern</h4>
+<p>The field under validation must not match the given regular expression.</p>
+<h4 id="rule-in">in=value1|value2|...</h4>
+<p>The field under validation must be included in the given list of values.</p>
+<h4 id="rule-notIn">notIn=value1|value2|...</h4>
+<p>The field under validation must not be included in the given list of values.</p>
+<h4 id="rule-boolean">boolean</h4>
+<p>The field under validation must be able to be cast as a boolean. Accepted input are true, false, 1, 0, "1", "0", "true", "false", "yes", "no", "on", "off".</p>
+<h4 id="rule-accepted">accepted</h4>
+<p>The field under validation must be "yes", "on", 1, or true.</p>
+<h4 id="rule-declined">declined</h4>
+<p>The field under validation must be "no", "off", 0, or false.</p>
+<h2>Type-Safe Date Validation (Alternative API)</h2>
+<p>For those who prefer type-safe validation over struct tags, you can use the fluent API:</p>
+<pre>
+import "github.com/syssam/go-validator"
+
+// Using standalone functions
+if !validator.DateAfter(checkIn, validator.Today()) {
+    return errors.New("check-in must be after today")
+}
+
+// Using fluent builder
+rule := validator.Date("birth_date").Before(validator.T(validator.Today()).SubYears(18))
+if err := rule.ValidateWithError(user.BirthDate); err != nil {
+    return err
+}
+
+// Available helper functions
+today := validator.Today()           // Today at midnight
+tomorrow := validator.Tomorrow()     // Tomorrow at midnight
+yesterday := validator.Yesterday()   // Yesterday at midnight
+
+// Date arithmetic with TimeHelper
+weekAgo := validator.T(validator.Today()).SubDays(7)
+nextMonth := validator.T(validator.Today()).AddMonths(1)
+years18Ago := validator.T(validator.Today()).SubYears(18)
+</pre>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>
@@ -195,5 +291,32 @@
     ValidateUUID5(str string) bool
     ValidateUUID(str string) bool
     ValidateURL(str string) bool
+
+    // Date validation functions
+    Today() time.Time
+    Tomorrow() time.Time
+    Yesterday() time.Time
+    Now() time.Time
+    DateAfter(value, after time.Time) bool
+    DateAfterOrEqual(value, after time.Time) bool
+    DateBefore(value, before time.Time) bool
+    DateBeforeOrEqual(value, before time.Time) bool
+    DateBetween(value, start, end time.Time) bool
+    DateBetweenOrEqual(value, start, end time.Time) bool
+    IsToday(value time.Time) bool
+    IsFuture(value time.Time) bool
+    IsPast(value time.Time) bool
+
+    // Generic validation functions (Go 1.18+)
+    IsMin[T NumericType](value, min T) bool
+    IsMax[T NumericType](value, max T) bool
+    IsBetween[T NumericType](value, min, max T) bool
+    IsGt[T OrderedType](value, threshold T) bool
+    IsGte[T OrderedType](value, threshold T) bool
+    IsLt[T OrderedType](value, threshold T) bool
+    IsLte[T OrderedType](value, threshold T) bool
+    IsDistinct[T comparable](value []T) bool
+    IsIn[T comparable](value T, allowed []T) bool
+    IsNotIn[T comparable](value T, disallowed []T) bool
   </pre>
 </div>

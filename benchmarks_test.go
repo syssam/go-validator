@@ -329,3 +329,39 @@ func BenchmarkComplexValidation(t *testing.B) {
 		_ = ValidateStruct(data)
 	}
 }
+
+// BenchmarkRegexValidation benchmarks regex validation with caching
+func BenchmarkRegexValidation(t *testing.B) {
+	type RegexStruct struct {
+		Code1 string `valid:"regex=^[A-Z]{3}-[0-9]{4}$"`
+		Code2 string `valid:"regex=^[a-z]+@[a-z]+\\.[a-z]{2,}$"`
+		Code3 string `valid:"regex=^\\d{3}-\\d{3}-\\d{4}$"`
+	}
+
+	data := RegexStruct{
+		Code1: "ABC-1234",
+		Code2: "test@example.com",
+		Code3: "123-456-7890",
+	}
+
+	t.ResetTimer()
+	t.ReportAllocs()
+	for i := 0; i < t.N; i++ {
+		_ = ValidateStruct(data)
+	}
+}
+
+// BenchmarkRegexValidationRepeated benchmarks repeated regex validation (tests cache effectiveness)
+func BenchmarkRegexValidationRepeated(t *testing.B) {
+	type RegexStruct struct {
+		Code string `valid:"regex=^[A-Z]{3}-[0-9]{4}$"`
+	}
+
+	data := RegexStruct{Code: "ABC-1234"}
+
+	t.ResetTimer()
+	t.ReportAllocs()
+	for i := 0; i < t.N; i++ {
+		_ = ValidateStruct(data)
+	}
+}

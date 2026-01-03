@@ -5,12 +5,13 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
-// ValidateBetweenString is
-func ValidateBetweenString(v string, left, right int64) bool {
-	return ValidateDigitsBetweenInt64(int64(utf8.RuneCountInString(v)), left, right)
+// IsStringBetween checks if string length is between left and right
+func IsStringBetween(v string, left, right int64) bool {
+	return IsInt64Between(int64(utf8.RuneCountInString(v)), left, right)
 }
 
 // InString check if string str is a member of the set of strings params
@@ -76,111 +77,111 @@ func IsEmptyString(str string) bool {
 	return strings.TrimSpace(str) == ""
 }
 
-// ValidateEmail check if the string is an email.
-func ValidateEmail(str string) bool {
+// IsEmail check if the string is an email.
+func IsEmail(str string) bool {
 	return rxEmail.MatchString(str)
 }
 
-// ValidateAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
-func ValidateAlpha(str string) bool {
+// IsAlpha check if the string may be only contains letters (a-zA-Z). Empty string is valid.
+func IsAlpha(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlpha.MatchString(str)
 }
 
-// ValidateAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
-func ValidateAlphaNum(str string) bool {
+// IsAlphaNum check if the string may be only contains letters and numbers. Empty string is valid.
+func IsAlphaNum(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlphaNum.MatchString(str)
 }
 
-// ValidateAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
-func ValidateAlphaDash(str string) bool {
+// IsAlphaDash check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
+func IsAlphaDash(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlphaDash.MatchString(str)
 }
 
-// ValidateAlphaUnicode check if the string may be only contains letters (a-zA-Z). Empty string is valid.
-func ValidateAlphaUnicode(str string) bool {
+// IsAlphaUnicode check if the string may be only contains letters (a-zA-Z). Empty string is valid.
+func IsAlphaUnicode(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlphaUnicode.MatchString(str)
 }
 
-// ValidateAlphaNumUnicode check if the string may be only contains letters and numbers. Empty string is valid.
-func ValidateAlphaNumUnicode(str string) bool {
+// IsAlphaNumUnicode check if the string may be only contains letters and numbers. Empty string is valid.
+func IsAlphaNumUnicode(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlphaNumUnicode.MatchString(str)
 }
 
-// ValidateAlphaDashUnicode check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
-func ValidateAlphaDashUnicode(str string) bool {
+// IsAlphaDashUnicode check if the string may be only contains letters, numbers, dashes and underscores. Empty string is valid.
+func IsAlphaDashUnicode(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxAlphaDashUnicode.MatchString(str)
 }
 
-// ValidateIP check if the string is an ip address.
-func ValidateIP(v string) bool {
+// IsIP check if the string is an ip address.
+func IsIP(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil
 }
 
-// ValidateIPv4 check if the string is an ipv4 address.
-func ValidateIPv4(v string) bool {
+// IsIPv4 check if the string is an ipv4 address.
+func IsIPv4(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil && ip.To4() != nil
 }
 
-// ValidateIPv6 check if the string is an ipv6 address.
-func ValidateIPv6(v string) bool {
+// IsIPv6 check if the string is an ipv6 address.
+func IsIPv6(v string) bool {
 	ip := net.ParseIP(v)
 	return ip != nil && ip.To4() == nil
 }
 
-// ValidateUUID3 check if the string is an uuid3.
-func ValidateUUID3(str string) bool {
+// IsUUID3 check if the string is an uuid3.
+func IsUUID3(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxUUID3.MatchString(str)
 }
 
-// ValidateUUID4 check if the string is an uuid4.
-func ValidateUUID4(str string) bool {
+// IsUUID4 check if the string is an uuid4.
+func IsUUID4(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxUUID4.MatchString(str)
 }
 
-// ValidateUUID5 check if the string is an uuid5.
-func ValidateUUID5(str string) bool {
+// IsUUID5 check if the string is an uuid5.
+func IsUUID5(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxUUID5.MatchString(str)
 }
 
-// ValidateUUID check if the string is an uuid.
-func ValidateUUID(str string) bool {
+// IsUUID check if the string is an uuid.
+func IsUUID(str string) bool {
 	if IsNull(str) {
 		return true
 	}
 	return rxUUID.MatchString(str)
 }
 
-// ValidateURL check if the string is an URL.
-func ValidateURL(str string) bool {
+// IsURL check if the string is an URL.
+func IsURL(str string) bool {
 	var i int
 
 	if IsNull(str) {
@@ -198,3 +199,158 @@ func ValidateURL(str string) bool {
 
 	return true
 }
+
+// IsHexColor check if the string is a valid hex color code.
+// Supports 3 and 6 character formats with or without # prefix.
+// Examples: #fff, #FFF, #ffffff, #FFFFFF, fff, ffffff
+func IsHexColor(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxHexColor.MatchString(str)
+}
+
+// IsTimezone check if the string is a valid timezone identifier.
+// Uses Go's time.LoadLocation to validate.
+// Examples: UTC, America/New_York, Europe/London, Asia/Tokyo
+func IsTimezone(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	_, err := time.LoadLocation(str)
+	return err == nil
+}
+
+// IsASCII check if the string contains only ASCII characters.
+// Empty string is valid.
+func IsASCII(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxASCII.MatchString(str)
+}
+
+// IsLowercase check if the string is all lowercase.
+// Empty string is valid.
+func IsLowercase(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return str == strings.ToLower(str)
+}
+
+// IsUppercase check if the string is all uppercase.
+// Empty string is valid.
+func IsUppercase(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return str == strings.ToUpper(str)
+}
+
+// IsStartsWith check if the string starts with any of the given prefixes.
+// Empty string is valid.
+func IsStartsWith(str string, params []string) bool {
+	if IsNull(str) {
+		return true
+	}
+	for _, prefix := range params {
+		if strings.HasPrefix(str, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsEndsWith check if the string ends with any of the given suffixes.
+// Empty string is valid.
+func IsEndsWith(str string, params []string) bool {
+	if IsNull(str) {
+		return true
+	}
+	for _, suffix := range params {
+		if strings.HasSuffix(str, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDoesntStartWith check if the string does not start with any of the given prefixes.
+// Empty string is valid.
+func IsDoesntStartWith(str string, params []string) bool {
+	if IsNull(str) {
+		return true
+	}
+	for _, prefix := range params {
+		if strings.HasPrefix(str, prefix) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsDoesntEndWith check if the string does not end with any of the given suffixes.
+// Empty string is valid.
+func IsDoesntEndWith(str string, params []string) bool {
+	if IsNull(str) {
+		return true
+	}
+	for _, suffix := range params {
+		if strings.HasSuffix(str, suffix) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsMACAddress check if the string is a valid MAC address.
+// Supports formats: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX, XXXX.XXXX.XXXX
+// Empty string is valid.
+func IsMACAddress(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxMACAddress.MatchString(str)
+}
+
+// IsULID check if the string is a valid ULID.
+// ULID format: 01ARZ3NDEKTSV4RRFFQ69G5FAV (26 characters, Crockford's base32)
+// Empty string is valid.
+func IsULID(str string) bool {
+	if IsNull(str) {
+		return true
+	}
+	return rxULID.MatchString(str)
+}
+
+// Deprecated: Use Is* functions instead.
+var (
+	ValidateBetweenString    = IsStringBetween
+	ValidateEmail            = IsEmail
+	ValidateAlpha            = IsAlpha
+	ValidateAlphaNum         = IsAlphaNum
+	ValidateAlphaDash        = IsAlphaDash
+	ValidateAlphaUnicode     = IsAlphaUnicode
+	ValidateAlphaNumUnicode  = IsAlphaNumUnicode
+	ValidateAlphaDashUnicode = IsAlphaDashUnicode
+	ValidateIP               = IsIP
+	ValidateIPv4             = IsIPv4
+	ValidateIPv6             = IsIPv6
+	ValidateUUID             = IsUUID
+	ValidateUUID3            = IsUUID3
+	ValidateUUID4            = IsUUID4
+	ValidateUUID5            = IsUUID5
+	ValidateURL              = IsURL
+	ValidateHexColor         = IsHexColor
+	ValidateTimezone         = IsTimezone
+	ValidateASCII            = IsASCII
+	ValidateLowercase        = IsLowercase
+	ValidateUppercase        = IsUppercase
+	ValidateStartsWith       = IsStartsWith
+	ValidateEndsWith         = IsEndsWith
+	ValidateDoesntStartWith  = IsDoesntStartWith
+	ValidateDoesntEndWith    = IsDoesntEndWith
+	ValidateMACAddress       = IsMACAddress
+	ValidateULID             = IsULID
+)

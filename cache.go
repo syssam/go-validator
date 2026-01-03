@@ -22,6 +22,7 @@ type field struct {
 	validTags        otherValidTags
 	typ              reflect.Type
 	omitEmpty        bool
+	nullable         bool
 }
 
 // A ValidTag represents parse validTag into field struct.
@@ -106,6 +107,7 @@ func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.
 		validTags:        otherValidTags,
 		typ:              ft,
 		omitEmpty:        strings.Contains(validTag, "omitempty"),
+		nullable:         strings.Contains(validTag, "nullable"),
 	}
 }
 
@@ -216,7 +218,10 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 				defaultAttribute = tag[1]
 			}
 			continue
-		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
+		case "omitempty", "nullable":
+			// Meta-rules that are handled separately, not as validators
+			continue
+		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll", "requiredIfAccepted", "requiredIfDeclined":
 			messageParameters, _ := f.parseMessageParameterIntoSlice(tag[0], params...)
 			requiredTags = append(requiredTags, &ValidTag{
 				name:              tag[0],

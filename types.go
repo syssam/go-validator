@@ -55,20 +55,48 @@ func (tm *customTypeRuleMap) Set(name string, ctv CustomTypeValidateFunc) {
 
 // RuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var RuleMap = map[string]ValidateFunc{
-	"distinct": validateDistinct,
+	"distinct":   validateDistinct,
+	"accepted":   func(v reflect.Value) (bool, error) { return validateAccepted(v), nil },
+	"declined":   func(v reflect.Value) (bool, error) { return validateDeclined(v), nil },
+	"prohibited": func(v reflect.Value) (bool, error) { return validateProhibited(v), nil },
+	"missing":    func(v reflect.Value) (bool, error) { return validateMissing(v), nil },
+	"present":    func(v reflect.Value) (bool, error) { return validatePresent(v), nil },
+	"list":       validateList,
+	"date":       validateDate,
+	"json":       validateJSON,
+	"boolean":    validateBoolean,
+	"string":     validateString,
+	"array":      validateArray,
+	"filled":     validateFilled,
 }
 
 // ParamRuleMap is a map of functions, that can be used as tags for ValidateStruct function.
 var ParamRuleMap = map[string]ParamValidateFunc{
-	"between":       validateBetween,
-	"digitsBetween": validateDigitsBetween,
-	"min":           validateMin,
-	"max":           validateMax,
-	"size":          validateSize,
-	"gt":            validateGtParam,
-	"gte":           validateGteParam,
-	"lt":            validateLtParam,
-	"lte":           validateLteParam,
+	"between":           validateBetween,
+	"digitsBetween":     validateDigitsBetween,
+	"min":               validateMin,
+	"max":               validateMax,
+	"size":              validateSize,
+	"gt":                validateGtParam,
+	"gte":               validateGteParam,
+	"lt":                validateLtParam,
+	"lte":               validateLteParam,
+	"multipleOf":        validateMultipleOf,
+	"maxDigits":         validateMaxDigits,
+	"minDigits":         validateMinDigits,
+	"decimal":           validateDecimalPrecision,
+	"contains":          validateContains,
+	"doesntContain":     validateDoesntContain,
+	"requiredArrayKeys": validateRequiredArrayKeys,
+	"dateFormat":        validateDateFormat,
+	"after":             validateAfter,
+	"afterOrEqual":      validateAfterOrEqual,
+	"before":            validateBefore,
+	"beforeOrEqual":     validateBeforeOrEqual,
+	"in":                validateIn,
+	"notIn":             validateNotIn,
+	"regex":             validateRegex,
+	"notRegex":          validateNotRegex,
 }
 
 // StringRulesMap is a map of functions, that can be used as tags for ValidateStruct function when reflect type is string.
@@ -91,7 +119,22 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"uuid4":            ValidateUUID4,
 	"uuid5":            ValidateUUID5,
 	"uuid":             ValidateUUID,
+	"ulid":             ValidateULID,
 	"url":              ValidateURL,
+	"hexColor":         ValidateHexColor,
+	"timezone":         ValidateTimezone,
+	"ascii":            ValidateASCII,
+	"lowercase":        ValidateLowercase,
+	"uppercase":        ValidateUppercase,
+	"macAddress":       ValidateMACAddress,
+}
+
+// StringParamRulesMap is a map of functions with params, that can be used as tags for ValidateStruct function when reflect type is string.
+var StringParamRulesMap = map[string]StringParamValidateFunc{
+	"startsWith":       ValidateStartsWith,
+	"endsWith":         ValidateEndsWith,
+	"doesntStartWith":  ValidateDoesntStartWith,
+	"doesntEndWith":    ValidateDoesntEndWith,
 }
 
 // Mimes is a map of extension to MIME types.
