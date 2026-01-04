@@ -82,18 +82,18 @@
     <li><a>accepted</a></li>
     <li><a>declined</a></li>
     <li><a>country</a></li>
-    <li><a>country:alpha2</a></li>
-    <li><a>country:alpha3</a></li>
-    <li><a>country:numeric</a></li>
+    <li><a>country.alpha2</a></li>
+    <li><a>country.alpha3</a></li>
+    <li><a>country.numeric</a></li>
     <li><a>currency</a></li>
-    <li><a>currency:all</a></li>
-    <li><a>currency:fiat</a></li>
-    <li><a>currency:crypto</a></li>
+    <li><a>currency.all</a></li>
+    <li><a>currency.fiat</a></li>
+    <li><a>currency.crypto</a></li>
     <li><a>language</a></li>
-    <li><a>language:alpha2</a></li>
-    <li><a>language:alpha3</a></li>
+    <li><a>language.alpha2</a></li>
+    <li><a>language.alpha3</a></li>
     <li><a>phone</a></li>
-    <li><a>phone:e164</a></li>
+    <li><a>phone.e164</a></li>
 </ul>
 <h4 id="rule-omitempty">omitempty</h4>
 <p>The "omitempty" option specifies that the field should be omitted from the encoding if the field has an empty value, defined as false, 0, a nil pointer, a nil interface value, and any empty array, slice, map, or string.</p>
@@ -229,52 +229,52 @@ type Form struct {
 <p>The field under validation must be "yes", "on", 1, or true.</p>
 <h4 id="rule-declined">declined</h4>
 <p>The field under validation must be "no", "off", 0, or false.</p>
-<h4 id="rule-country">country, country:alpha2, country:alpha3, country:numeric</h4>
+<h4 id="rule-country">country, country.alpha2, country.alpha3, country.numeric</h4>
 <p>The field under validation must be a valid ISO 3166-1 country code.</p>
 <ul>
-  <li><code>country</code> or <code>country:alpha2</code> - 2-letter code (e.g., US, GB, CN)</li>
-  <li><code>country:alpha3</code> - 3-letter code (e.g., USA, GBR, CHN)</li>
-  <li><code>country:numeric</code> - Numeric code (e.g., 840, 826, 156)</li>
+  <li><code>country</code> or <code>country.alpha2</code> - 2-letter code (e.g., US, GB, CN)</li>
+  <li><code>country.alpha3</code> - 3-letter code (e.g., USA, GBR, CHN)</li>
+  <li><code>country.numeric</code> - Numeric code (e.g., 840, 826, 156)</li>
 </ul>
 <pre>
 type Address struct {
-    Country string `valid:"required,country:alpha2"`
+    Country string `valid:"required,country.alpha2"`
 }
 </pre>
-<h4 id="rule-currency">currency, currency:fiat, currency:crypto</h4>
+<h4 id="rule-currency">currency, currency.fiat, currency.crypto</h4>
 <p>The field under validation must be a valid currency code.</p>
 <ul>
-  <li><code>currency</code> or <code>currency:all</code> - Any currency (fiat + crypto)</li>
-  <li><code>currency:fiat</code> - ISO 4217 3-letter code (e.g., USD, EUR, CNY)</li>
-  <li><code>currency:crypto</code> - Cryptocurrency code (e.g., BTC, ETH, USDT, SOL)</li>
+  <li><code>currency</code> or <code>currency.all</code> - Any currency (fiat + crypto)</li>
+  <li><code>currency.fiat</code> - ISO 4217 3-letter code (e.g., USD, EUR, CNY)</li>
+  <li><code>currency.crypto</code> - Cryptocurrency code (e.g., BTC, ETH, USDT, SOL)</li>
 </ul>
 <pre>
 type Payment struct {
     Currency   string `valid:"required,currency"`        // fiat or crypto
-    FiatOnly   string `valid:"required,currency:fiat"`   // fiat only
-    CryptoOnly string `valid:"required,currency:crypto"` // crypto only
+    FiatOnly   string `valid:"required,currency.fiat"`   // fiat only
+    CryptoOnly string `valid:"required,currency.crypto"` // crypto only
 }
 </pre>
-<h4 id="rule-language">language, language:alpha2, language:alpha3</h4>
+<h4 id="rule-language">language, language.alpha2, language.alpha3</h4>
 <p>The field under validation must be a valid ISO 639 language code.</p>
 <ul>
-  <li><code>language</code> or <code>language:alpha2</code> - 2-letter code (e.g., en, zh, ja)</li>
-  <li><code>language:alpha3</code> - 3-letter code (e.g., eng, zho, jpn)</li>
+  <li><code>language</code> or <code>language.alpha2</code> - 2-letter code (e.g., en, zh, ja)</li>
+  <li><code>language.alpha3</code> - 3-letter code (e.g., eng, zho, jpn)</li>
 </ul>
 <pre>
 type UserPreferences struct {
-    Language string `valid:"required,language:alpha2"`
+    Language string `valid:"required,language.alpha2"`
 }
 </pre>
-<h4 id="rule-phone">phone, phone:e164</h4>
+<h4 id="rule-phone">phone, phone.e164</h4>
 <p>The field under validation must be a valid phone number.</p>
 <ul>
-  <li><code>phone:e164</code> - E.164 format with country code (e.g., +14155551234)</li>
+  <li><code>phone.e164</code> - E.164 format with country code (e.g., +14155551234)</li>
   <li><code>phone</code> - Any valid phone number format with country code</li>
 </ul>
 <pre>
 type Contact struct {
-    Phone string `valid:"required,phone:e164"`
+    Phone string `valid:"required,phone.e164"`
 }
 </pre>
 <h2>Type-Safe Date Validation (Alternative API)</h2>

@@ -129,20 +129,20 @@ var StringRulesMap = map[string]StringValidateFunc{
 	"macAddress":       IsMACAddress,
 	// Country codes (ISO 3166-1)
 	"country":         IsCountryCode,
-	"country:alpha2":  IsCountryAlpha2,
-	"country:alpha3":  IsCountryAlpha3,
-	"country:numeric": IsCountryNumeric,
+	"country.alpha2":  IsCountryAlpha2,
+	"country.alpha3":  IsCountryAlpha3,
+	"country.numeric": IsCountryNumeric,
 	// Currency codes (ISO 4217 + Crypto)
 	"currency":        IsCurrencyAll,
-	"currency:all":    IsCurrencyAll,
-	"currency:fiat":   IsCurrencyFiat,
-	"currency:crypto": IsCurrencyCrypto,
+	"currency.all":    IsCurrencyAll,
+	"currency.fiat":   IsCurrencyFiat,
+	"currency.crypto": IsCurrencyCrypto,
 	// Language codes (ISO 639)
 	"language":        IsLanguageCode,
-	"language:alpha2": IsLanguageAlpha2,
-	"language:alpha3": IsLanguageAlpha3,
+	"language.alpha2": IsLanguageAlpha2,
+	"language.alpha3": IsLanguageAlpha3,
 	// Phone validation
-	"phone:e164": IsPhoneE164,
+	"phone.e164": IsPhoneE164,
 	"phone":      IsPhoneValid,
 }
 
