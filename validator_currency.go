@@ -32,112 +32,112 @@ var currencyCodes = map[string]bool{
 // Cryptocurrency codes (common cryptocurrencies)
 var currencyCrypto = map[string]bool{
 	// Major cryptocurrencies
-	"BTC":  true, // Bitcoin
-	"ETH":  true, // Ethereum
-	"USDT": true, // Tether
-	"USDC": true, // USD Coin
-	"BNB":  true, // Binance Coin
-	"XRP":  true, // Ripple
-	"ADA":  true, // Cardano
-	"DOGE": true, // Dogecoin
-	"SOL":  true, // Solana
-	"DOT":  true, // Polkadot
-	"MATIC": true, // Polygon
-	"LTC":  true, // Litecoin
-	"SHIB": true, // Shiba Inu
-	"TRX":  true, // Tron
-	"AVAX": true, // Avalanche
-	"LINK": true, // Chainlink
-	"ATOM": true, // Cosmos
-	"XMR":  true, // Monero
-	"ETC":  true, // Ethereum Classic
-	"BCH":  true, // Bitcoin Cash
-	"XLM":  true, // Stellar
-	"ALGO": true, // Algorand
-	"VET":  true, // VeChain
-	"FIL":  true, // Filecoin
-	"ICP":  true, // Internet Computer
-	"NEAR": true, // NEAR Protocol
-	"APT":  true, // Aptos
-	"ARB":  true, // Arbitrum
-	"OP":   true, // Optimism
-	"AAVE": true, // Aave
-	"UNI":  true, // Uniswap
-	"MKR":  true, // Maker
-	"CRO":  true, // Cronos
-	"QNT":  true, // Quant
-	"GRT":  true, // The Graph
-	"FTM":  true, // Fantom
-	"SAND": true, // The Sandbox
-	"MANA": true, // Decentraland
-	"AXS":  true, // Axie Infinity
-	"THETA": true, // Theta Network
-	"EGLD": true, // MultiversX
-	"EOS":  true, // EOS
-	"XTZ":  true, // Tezos
-	"FLOW": true, // Flow
-	"CHZ":  true, // Chiliz
-	"CAKE": true, // PancakeSwap
-	"ZEC":  true, // Zcash
-	"NEO":  true, // Neo
-	"KAVA": true, // Kava
-	"DASH": true, // Dash
-	"WAVES": true, // Waves
-	"MINA": true, // Mina Protocol
-	"ZIL":  true, // Zilliqa
-	"ENJ":  true, // Enjin Coin
-	"BAT":  true, // Basic Attention Token
-	"1INCH": true, // 1inch
-	"COMP": true, // Compound
-	"SNX":  true, // Synthetix
-	"YFI":  true, // yearn.finance
-	"SUSHI": true, // SushiSwap
-	"CRV":  true, // Curve DAO Token
-	"LDO":  true, // Lido DAO
-	"RPL":  true, // Rocket Pool
-	"RUNE": true, // THORChain
-	"INJ":  true, // Injective
-	"SUI":  true, // Sui
-	"SEI":  true, // Sei
-	"TIA":  true, // Celestia
-	"JUP":  true, // Jupiter
-	"PYTH": true, // Pyth Network
-	"WLD":  true, // Worldcoin
-	"BLUR": true, // Blur
-	"PEPE": true, // Pepe
-	"BONK": true, // Bonk
-	"WIF":  true, // dogwifhat
-	"FLOKI": true, // Floki
-	"FET":  true, // Fetch.ai
-	"RNDR": true, // Render
-	"AGIX": true, // SingularityNET
-	"OCEAN": true, // Ocean Protocol
-	"TAO":  true, // Bittensor
-	"AR":   true, // Arweave
-	"STX":  true, // Stacks
-	"IMX":  true, // Immutable X
-	"GMX":  true, // GMX
-	"DYDX": true, // dYdX
-	"OSMO": true, // Osmosis
-	"CFX":  true, // Conflux
-	"ROSE": true, // Oasis Network
-	"CELO": true, // Celo
-	"KDA":  true, // Kadena
-	"HBAR": true, // Hedera
-	"IOTA": true, // IOTA
-	"XDC":  true, // XDC Network
-	"KLAY": true, // Klaytn
-	"ONE":  true, // Harmony
-	"ICX":  true, // ICON
-	"ZRX":  true, // 0x Protocol
-	"LRC":  true, // Loopring
-	"GALA": true, // Gala
-	"APE":  true, // ApeCoin
-	"MASK": true, // Mask Network
-	"ENS":  true, // Ethereum Name Service
-	"SSV":  true, // SSV Network
+	"BTC":    true, // Bitcoin
+	"ETH":    true, // Ethereum
+	"USDT":   true, // Tether
+	"USDC":   true, // USD Coin
+	"BNB":    true, // Binance Coin
+	"XRP":    true, // Ripple
+	"ADA":    true, // Cardano
+	"DOGE":   true, // Dogecoin
+	"SOL":    true, // Solana
+	"DOT":    true, // Polkadot
+	"MATIC":  true, // Polygon
+	"LTC":    true, // Litecoin
+	"SHIB":   true, // Shiba Inu
+	"TRX":    true, // Tron
+	"AVAX":   true, // Avalanche
+	"LINK":   true, // Chainlink
+	"ATOM":   true, // Cosmos
+	"XMR":    true, // Monero
+	"ETC":    true, // Ethereum Classic
+	"BCH":    true, // Bitcoin Cash
+	"XLM":    true, // Stellar
+	"ALGO":   true, // Algorand
+	"VET":    true, // VeChain
+	"FIL":    true, // Filecoin
+	"ICP":    true, // Internet Computer
+	"NEAR":   true, // NEAR Protocol
+	"APT":    true, // Aptos
+	"ARB":    true, // Arbitrum
+	"OP":     true, // Optimism
+	"AAVE":   true, // Aave
+	"UNI":    true, // Uniswap
+	"MKR":    true, // Maker
+	"CRO":    true, // Cronos
+	"QNT":    true, // Quant
+	"GRT":    true, // The Graph
+	"FTM":    true, // Fantom
+	"SAND":   true, // The Sandbox
+	"MANA":   true, // Decentraland
+	"AXS":    true, // Axie Infinity
+	"THETA":  true, // Theta Network
+	"EGLD":   true, // MultiversX
+	"EOS":    true, // EOS
+	"XTZ":    true, // Tezos
+	"FLOW":   true, // Flow
+	"CHZ":    true, // Chiliz
+	"CAKE":   true, // PancakeSwap
+	"ZEC":    true, // Zcash
+	"NEO":    true, // Neo
+	"KAVA":   true, // Kava
+	"DASH":   true, // Dash
+	"WAVES":  true, // Waves
+	"MINA":   true, // Mina Protocol
+	"ZIL":    true, // Zilliqa
+	"ENJ":    true, // Enjin Coin
+	"BAT":    true, // Basic Attention Token
+	"1INCH":  true, // 1inch
+	"COMP":   true, // Compound
+	"SNX":    true, // Synthetix
+	"YFI":    true, // yearn.finance
+	"SUSHI":  true, // SushiSwap
+	"CRV":    true, // Curve DAO Token
+	"LDO":    true, // Lido DAO
+	"RPL":    true, // Rocket Pool
+	"RUNE":   true, // THORChain
+	"INJ":    true, // Injective
+	"SUI":    true, // Sui
+	"SEI":    true, // Sei
+	"TIA":    true, // Celestia
+	"JUP":    true, // Jupiter
+	"PYTH":   true, // Pyth Network
+	"WLD":    true, // Worldcoin
+	"BLUR":   true, // Blur
+	"PEPE":   true, // Pepe
+	"BONK":   true, // Bonk
+	"WIF":    true, // dogwifhat
+	"FLOKI":  true, // Floki
+	"FET":    true, // Fetch.ai
+	"RNDR":   true, // Render
+	"AGIX":   true, // SingularityNET
+	"OCEAN":  true, // Ocean Protocol
+	"TAO":    true, // Bittensor
+	"AR":     true, // Arweave
+	"STX":    true, // Stacks
+	"IMX":    true, // Immutable X
+	"GMX":    true, // GMX
+	"DYDX":   true, // dYdX
+	"OSMO":   true, // Osmosis
+	"CFX":    true, // Conflux
+	"ROSE":   true, // Oasis Network
+	"CELO":   true, // Celo
+	"KDA":    true, // Kadena
+	"HBAR":   true, // Hedera
+	"IOTA":   true, // IOTA
+	"XDC":    true, // XDC Network
+	"KLAY":   true, // Klaytn
+	"ONE":    true, // Harmony
+	"ICX":    true, // ICON
+	"ZRX":    true, // 0x Protocol
+	"LRC":    true, // Loopring
+	"GALA":   true, // Gala
+	"APE":    true, // ApeCoin
+	"MASK":   true, // Mask Network
+	"ENS":    true, // Ethereum Name Service
+	"SSV":    true, // SSV Network
 	"PENDLE": true, // Pendle
-	"STRK": true, // Starknet
+	"STRK":   true, // Starknet
 }
 
 // IsCurrencyFiat validates ISO 4217 fiat currency code (3-letter)

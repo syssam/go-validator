@@ -13,11 +13,11 @@ func TestIsPhoneE164(t *testing.T) {
 		{"+81312345678", true},
 		{"+886912345678", true},
 		{"+821012345678", true},
-		{"+6591234567", true},  // Singapore 8-digit mobile
+		{"+6591234567", true}, // Singapore 8-digit mobile
 		{"+33123456789", true},
 		{"+4930123456", true},
-		{"14155551234", false},         // missing +
-		{"+1415555", false},            // too short
+		{"14155551234", false},          // missing +
+		{"+1415555", false},             // too short
 		{"+1234567890123456789", false}, // too long
 		{"", false},
 		{"+", false},
@@ -89,12 +89,12 @@ func TestIsPhoneMobile(t *testing.T) {
 		region   string
 		expected bool
 	}{
-		{"4155551234", "US", true},      // US mobile
-		{"13812345678", "CN", true},     // CN mobile
-		{"0912345678", "TW", true},      // TW mobile
-		{"09012345678", "JP", true},     // JP mobile
-		{"01012345678", "KR", true},     // KR mobile
-		{"07123456789", "GB", true},     // UK mobile
+		{"4155551234", "US", true},  // US mobile
+		{"13812345678", "CN", true}, // CN mobile
+		{"0912345678", "TW", true},  // TW mobile
+		{"09012345678", "JP", true}, // JP mobile
+		{"01012345678", "KR", true}, // KR mobile
+		{"07123456789", "GB", true}, // UK mobile
 		{"invalid", "US", false},
 		{"", "US", false},
 	}
@@ -186,6 +186,6 @@ func BenchmarkIsPhone(b *testing.B) {
 
 func BenchmarkFormatPhoneE164(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		FormatPhoneE164("4155551234", "US")
+		_, _ = FormatPhoneE164("4155551234", "US")
 	}
 }
