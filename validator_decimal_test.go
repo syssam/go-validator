@@ -456,6 +456,6 @@ func BenchmarkCompareDecimal(b *testing.B) {
 	second := decimal.NewFromFloat(50.0)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		compareDecimal(first, second, ">")
+		_, _ = compareDecimal(first, second, ">")
 	}
 }

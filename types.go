@@ -131,10 +131,10 @@ var StringRulesMap = map[string]StringValidateFunc{
 
 // StringParamRulesMap is a map of functions with params, that can be used as tags for ValidateStruct function when reflect type is string.
 var StringParamRulesMap = map[string]StringParamValidateFunc{
-	"startsWith":       ValidateStartsWith,
-	"endsWith":         ValidateEndsWith,
-	"doesntStartWith":  ValidateDoesntStartWith,
-	"doesntEndWith":    ValidateDoesntEndWith,
+	"startsWith":      ValidateStartsWith,
+	"endsWith":        ValidateEndsWith,
+	"doesntStartWith": ValidateDoesntStartWith,
+	"doesntEndWith":   ValidateDoesntEndWith,
 }
 
 // Mimes is a map of extension to MIME types.

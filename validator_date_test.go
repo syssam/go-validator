@@ -169,8 +169,8 @@ func TestValidateStructWithRelativeDates(t *testing.T) {
 
 	t.Run("BookingForm valid", func(t *testing.T) {
 		form := BookingForm{
-			CheckIn:  today.AddDate(0, 0, 1),  // tomorrow
-			CheckOut: today.AddDate(0, 0, 3),  // 3 days from now
+			CheckIn:  today.AddDate(0, 0, 1), // tomorrow
+			CheckOut: today.AddDate(0, 0, 3), // 3 days from now
 		}
 		err := ValidateStruct(&form)
 		if err != nil {

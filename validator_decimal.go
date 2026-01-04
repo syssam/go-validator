@@ -114,16 +114,16 @@ func IsDecimalBetween(value, min, max decimal.Decimal) bool {
 
 // Aliases for consistency with other validators.
 var (
-	IsDecimalRequired    = func(v decimal.Decimal) bool { return !v.IsZero() }
-	IsDecimalMin         = IsDecimalGte
-	IsDecimalMax         = IsDecimalLte
-	ValidateDecimalMin   = IsDecimalGte
-	ValidateDecimalMax   = IsDecimalLte
-	ValidateDecimalGt    = IsDecimalGt
-	ValidateDecimalGte   = IsDecimalGte
-	ValidateDecimalLt    = IsDecimalLt
-	ValidateDecimalLte   = IsDecimalLte
-	ValidateDecimalZero  = IsDecimalZero
+	IsDecimalRequired      = func(v decimal.Decimal) bool { return !v.IsZero() }
+	IsDecimalMin           = IsDecimalGte
+	IsDecimalMax           = IsDecimalLte
+	ValidateDecimalMin     = IsDecimalGte
+	ValidateDecimalMax     = IsDecimalLte
+	ValidateDecimalGt      = IsDecimalGt
+	ValidateDecimalGte     = IsDecimalGte
+	ValidateDecimalLt      = IsDecimalLt
+	ValidateDecimalLte     = IsDecimalLte
+	ValidateDecimalZero    = IsDecimalZero
 	ValidateDecimalBetween = IsDecimalBetween
 )
 

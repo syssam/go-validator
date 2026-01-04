@@ -819,8 +819,8 @@ func TestValidateRequiredArrayKeys(t *testing.T) {
 
 func TestValidateRequiredIfAccepted(t *testing.T) {
 	type TestRequiredIfAccepted struct {
-		Newsletter  string `valid:""`
-		Email       string `valid:"requiredIfAccepted=Newsletter"`
+		Newsletter string `valid:""`
+		Email      string `valid:"requiredIfAccepted=Newsletter"`
 	}
 
 	tests := []struct {
@@ -949,8 +949,8 @@ func TestValidateAcceptedIf(t *testing.T) {
 
 func TestValidateDeclinedIf(t *testing.T) {
 	type TestDeclinedIf struct {
-		Type      string `valid:""`
-		OptOut    string `valid:"declinedIf=Type|premium"`
+		Type   string `valid:""`
+		OptOut string `valid:"declinedIf=Type|premium"`
 	}
 
 	tests := []struct {
@@ -1001,8 +1001,8 @@ func TestValidateMissingIf(t *testing.T) {
 
 func TestValidateMissingUnless(t *testing.T) {
 	type TestMissingUnless struct {
-		Role   string `valid:""`
-		Admin  string `valid:"missingUnless=Role|admin"`
+		Role  string `valid:""`
+		Admin string `valid:"missingUnless=Role|admin"`
 	}
 
 	tests := []struct {
@@ -1106,8 +1106,8 @@ func TestValidatePresentWith(t *testing.T) {
 
 func TestValidatePresentWithAll(t *testing.T) {
 	type TestPresentWithAll struct {
-		First  string `valid:""`
-		Last   string `valid:""`
+		First    string `valid:""`
+		Last     string `valid:""`
 		FullName string `valid:"presentWithAll=First|Last"`
 	}
 
@@ -1133,8 +1133,8 @@ func TestValidatePresentWithAll(t *testing.T) {
 
 func TestValidateProhibitedIf(t *testing.T) {
 	type TestProhibitedIf struct {
-		Type   string `valid:""`
-		Extra  string `valid:"prohibitedIf=Type|basic"`
+		Type  string `valid:""`
+		Extra string `valid:"prohibitedIf=Type|basic"`
 	}
 
 	tests := []struct {
@@ -1159,8 +1159,8 @@ func TestValidateProhibitedIf(t *testing.T) {
 
 func TestValidateProhibitedUnless(t *testing.T) {
 	type TestProhibitedUnless struct {
-		Role    string `valid:""`
-		Admin   string `valid:"prohibitedUnless=Role|admin"`
+		Role  string `valid:""`
+		Admin string `valid:"prohibitedUnless=Role|admin"`
 	}
 
 	tests := []struct {
@@ -1237,8 +1237,8 @@ func TestValidatePresentIf(t *testing.T) {
 
 func TestValidatePresentUnless(t *testing.T) {
 	type TestPresentUnless struct {
-		Status  string `valid:""`
-		Reason  string `valid:"presentUnless=Status|approved"`
+		Status string `valid:""`
+		Reason string `valid:"presentUnless=Status|approved"`
 	}
 
 	tests := []struct {
