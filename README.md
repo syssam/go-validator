@@ -222,7 +222,7 @@ type Form struct {
 import "github.com/syssam/go-validator"
 
 // Using standalone functions
-if !validator.DateAfter(checkIn, validator.Today()) {
+if !validator.IsDateAfter(checkIn, validator.Today()) {
     return errors.New("check-in must be after today")
 }
 
@@ -251,72 +251,71 @@ years18Ago := validator.T(validator.Today()).SubYears(18)
   </pre>
 </div>
 <h2>List of functions:</h2>
-<div class="highlight highlight-source-go">
-  <pre>
-    IsNumeric(str string) bool
-    IsInt(str string) bool
-    IsFloat(str string) bool
-    IsNull(str string) bool
-    ValidateBetween(i interface{}, params []string) (bool, error)
-    ValidateDigitsBetween(i interface{}, params []string) (bool, error)
-    ValidateDigitsBetweenInt64(value, left, right int64) bool
-    ValidateDigitsBetweenFloat64(value, left, right float64) bool
-    ValidateGt(i interface{}, a interface{}) (bool, error)
-    ValidateGtFloat64(v, param float64) bool
-    ValidateGte(i interface{}, a interface{}) (bool, error)
-    ValidateGteFloat64(v, param float64) bool
-    ValidateLt(i interface{}, a interface{}) (bool, error)
-    ValidateLtFloat64(v, param float64) bool
-    ValidateLte(i interface{}, a interface{}) (bool, error)
-    ValidateLteFloat64(v, param float64) bool
-    ValidateRequired(i interface{}) bool
-    ValidateMin(i interface{}, params []string) (bool, error)
-    ValidateMinFloat64(v, param float64) bool
-    ValidateMax(i interface{}, params []string) (bool, error)
-    ValidateMaxFloat64(v, param float64) bool
-    ValidateSize(i interface{}, params []string) (bool, error)
-    ValidateDistinct(i interface{}) bool
-    ValidateEmail(str string) bool
-    ValidateAlpha(str string) bool
-    ValidateAlphaNum(str string) bool
-    ValidateAlphaDash(str string) bool
-    ValidateAlphaUnicode(str string) bool
-    ValidateAlphaNumUnicode(str string) bool
-    ValidateAlphaDashUnicode(str string) bool
-    ValidateIP(str string) bool
-    ValidateIPv4(str string) bool
-    ValidateIPv6(str string) bool
-    ValidateUUID3(str string) bool
-    ValidateUUID4(str string) bool
-    ValidateUUID5(str string) bool
-    ValidateUUID(str string) bool
-    ValidateURL(str string) bool
-
-    // Date validation functions
-    Today() time.Time
-    Tomorrow() time.Time
-    Yesterday() time.Time
-    Now() time.Time
-    DateAfter(value, after time.Time) bool
-    DateAfterOrEqual(value, after time.Time) bool
-    DateBefore(value, before time.Time) bool
-    DateBeforeOrEqual(value, before time.Time) bool
-    DateBetween(value, start, end time.Time) bool
-    DateBetweenOrEqual(value, start, end time.Time) bool
-    IsToday(value time.Time) bool
-    IsFuture(value time.Time) bool
-    IsPast(value time.Time) bool
-
-    // Generic validation functions (Go 1.18+)
-    IsMin[T NumericType](value, min T) bool
-    IsMax[T NumericType](value, max T) bool
-    IsBetween[T NumericType](value, min, max T) bool
-    IsGt[T OrderedType](value, threshold T) bool
-    IsGte[T OrderedType](value, threshold T) bool
-    IsLt[T OrderedType](value, threshold T) bool
-    IsLte[T OrderedType](value, threshold T) bool
-    IsDistinct[T comparable](value []T) bool
-    IsIn[T comparable](value T, allowed []T) bool
-    IsNotIn[T comparable](value T, disallowed []T) bool
-  </pre>
-</div>
+<h4>String Validation</h4>
+<pre>
+IsNumeric(str string) bool
+IsInt(str string) bool
+IsFloat(str string) bool
+IsNull(str string) bool
+IsEmail(str string) bool
+IsAlpha(str string) bool
+IsAlphaNum(str string) bool
+IsAlphaDash(str string) bool
+IsAlphaUnicode(str string) bool
+IsAlphaNumUnicode(str string) bool
+IsAlphaDashUnicode(str string) bool
+IsIP(str string) bool
+IsIPv4(str string) bool
+IsIPv6(str string) bool
+IsUUID3(str string) bool
+IsUUID4(str string) bool
+IsUUID5(str string) bool
+IsUUID(str string) bool
+IsURL(str string) bool
+</pre>
+<h4>Value Validation (Reflection-based)</h4>
+<pre>
+IsRequired(i interface{}) bool
+IsBetween(i interface{}, params []string) (bool, error)
+IsDigitsBetween(i interface{}, params []string) (bool, error)
+IsMin(i interface{}, params []string) (bool, error)
+IsMax(i interface{}, params []string) (bool, error)
+IsSize(i interface{}, params []string) (bool, error)
+IsDistinct(i interface{}) bool
+IsGt(i interface{}, a interface{}) (bool, error)
+IsGte(i interface{}, a interface{}) (bool, error)
+IsLt(i interface{}, a interface{}) (bool, error)
+IsLte(i interface{}, a interface{}) (bool, error)
+</pre>
+<h4>Date Validation</h4>
+<pre>
+Today() time.Time
+Tomorrow() time.Time
+Yesterday() time.Time
+Now() time.Time
+IsDateAfter(value, after time.Time) bool
+IsDateAfterOrEqual(value, after time.Time) bool
+IsDateBefore(value, before time.Time) bool
+IsDateBeforeOrEqual(value, before time.Time) bool
+IsDateBetween(value, start, end time.Time) bool
+IsDateBetweenOrEqual(value, start, end time.Time) bool
+IsToday(value time.Time) bool
+IsFuture(value time.Time) bool
+IsPast(value time.Time) bool
+</pre>
+<h4>Generic Validation (Go 1.18+, Type-safe)</h4>
+<pre>
+IsGenericRequired[T comparable](value T) bool
+IsGenericRequiredSlice[T any](value []T) bool
+IsGenericRequiredMap[K comparable, V any](value map[K]V) bool
+IsGenericMin[T NumericType](value, min T) bool
+IsGenericMax[T NumericType](value, max T) bool
+IsGenericBetween[T NumericType](value, min, max T) bool
+IsGenericGt[T OrderedType](value, threshold T) bool
+IsGenericGte[T OrderedType](value, threshold T) bool
+IsGenericLt[T OrderedType](value, threshold T) bool
+IsGenericLte[T OrderedType](value, threshold T) bool
+IsGenericDistinct[T comparable](value []T) bool
+IsGenericIn[T comparable](value T, allowed []T) bool
+IsGenericNotIn[T comparable](value T, disallowed []T) bool
+</pre>

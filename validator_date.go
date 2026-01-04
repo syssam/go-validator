@@ -136,10 +136,10 @@ func Now() time.Time {
 // Type-Safe Date Validation Functions (Google-style)
 // =============================================================================
 
-// DateValidator represents a date validation function
+// IsDateValidator represents a date validation function
 type DateValidator func(t time.Time) bool
 
-// DateRule provides fluent date validation building
+// IsDateRule provides fluent date validation building
 type DateRule struct {
 	validators []DateValidator
 	fieldName  string
@@ -227,33 +227,33 @@ func (r *DateRule) ValidateWithError(t time.Time) error {
 // Standalone Type-Safe Validation Functions
 // =============================================================================
 
-// DateAfter checks if the date is after the given time
-func DateAfter(value, after time.Time) bool {
+// IsDateAfter checks if the date is after the given time
+func IsDateAfter(value, after time.Time) bool {
 	return value.After(after)
 }
 
-// DateAfterOrEqual checks if the date is after or equal to the given time
-func DateAfterOrEqual(value, after time.Time) bool {
+// IsDateAfterOrEqual checks if the date is after or equal to the given time
+func IsDateAfterOrEqual(value, after time.Time) bool {
 	return value.After(after) || value.Equal(after)
 }
 
-// DateBefore checks if the date is before the given time
-func DateBefore(value, before time.Time) bool {
+// IsDateBefore checks if the date is before the given time
+func IsDateBefore(value, before time.Time) bool {
 	return value.Before(before)
 }
 
-// DateBeforeOrEqual checks if the date is before or equal to the given time
-func DateBeforeOrEqual(value, before time.Time) bool {
+// IsDateBeforeOrEqual checks if the date is before or equal to the given time
+func IsDateBeforeOrEqual(value, before time.Time) bool {
 	return value.Before(before) || value.Equal(before)
 }
 
-// DateBetween checks if the date is between start and end (exclusive)
-func DateBetween(value, start, end time.Time) bool {
+// IsDateBetween checks if the date is between start and end (exclusive)
+func IsDateBetween(value, start, end time.Time) bool {
 	return value.After(start) && value.Before(end)
 }
 
-// DateBetweenOrEqual checks if the date is between start and end (inclusive)
-func DateBetweenOrEqual(value, start, end time.Time) bool {
+// IsDateBetweenOrEqual checks if the date is between start and end (inclusive)
+func IsDateBetweenOrEqual(value, start, end time.Time) bool {
 	return (value.After(start) || value.Equal(start)) && (value.Before(end) || value.Equal(end))
 }
 
@@ -318,3 +318,16 @@ func (t TimeHelper) SubYears(years int) time.Time {
 func (t TimeHelper) AddYears(years int) time.Time {
 	return t.AddDate(years, 0, 0)
 }
+
+// =============================================================================
+// Deprecated: Use IsDate* functions instead.
+// =============================================================================
+
+var (
+	DateAfter          = IsDateAfter
+	DateAfterOrEqual   = IsDateAfterOrEqual
+	DateBefore         = IsDateBefore
+	DateBeforeOrEqual  = IsDateBeforeOrEqual
+	DateBetween        = IsDateBetween
+	DateBetweenOrEqual = IsDateBetweenOrEqual
+)

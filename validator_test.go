@@ -653,7 +653,7 @@ func TestPointer(t *testing.T) {
 
 // TestErrorHandling tests the new error handling mechanisms
 func TestErrorHandling(t *testing.T) {
-	// Test unsupported type errors for validateBetween
+	// Test unsupported type errors for isBetween
 	type UnsupportedBetween struct {
 		Complex complex64 `valid:"between=1|10"`
 	}
@@ -1646,7 +1646,7 @@ func TestValidateBetweenErrorCases(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v := reflect.ValueOf(test.value)
-			_, err := validateBetween(v, test.params)
+			_, err := isBetween(v, test.params)
 			if test.expectErr && err == nil {
 				t.Errorf("Expected error for %s", test.name)
 			}
@@ -1703,7 +1703,7 @@ func TestValidateBetweenAllNumericTypes(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v := reflect.ValueOf(test.value)
-			result, err := validateBetween(v, test.params)
+			result, err := isBetween(v, test.params)
 			if err != nil {
 				t.Errorf("Unexpected error for %s: %v", test.name, err)
 				return
@@ -2302,5 +2302,503 @@ func TestValidateFilledDirect(t *testing.T) {
 	valid, err = ValidateFilled("")
 	if err != nil || valid {
 		t.Error("Expected empty value to fail filled validation")
+	}
+}
+
+// =============================================================================
+// Coverage Improvement Tests - Direct validation function tests
+// =============================================================================
+
+func TestCoverageImprovementDirectFunctions(t *testing.T) {
+	// Test findField function
+	type TestStruct struct {
+		Name string
+		Age  int
+	}
+	testStruct := TestStruct{Name: "test", Age: 25}
+	v := reflect.ValueOf(testStruct)
+
+	// Test successful field finding
+	field, err := findField("Name", v)
+	if err != nil {
+		t.Errorf("findField should not error for valid field: %v", err)
+	}
+	if field.String() != "test" {
+		t.Errorf("Expected 'test', got %v", field.String())
+	}
+
+	// Test non-existent field (returns zero Value, not error)
+	field, err = findField("NonExistent", v)
+	if err != nil {
+		t.Errorf("findField should not error for non-existent field: %v", err)
+	}
+	if field.IsValid() {
+		t.Error("findField should return invalid Value for non-existent field")
+	}
+
+	// Test with non-struct
+	nonStruct := reflect.ValueOf("not a struct")
+	_, err = findField("field", nonStruct)
+	if err == nil {
+		t.Error("findField should error for non-struct value")
+	}
+}
+
+func TestValidateRequiredWithDirect(t *testing.T) {
+	type TestStruct struct {
+		Field1 string
+		Field2 string
+	}
+
+	// Case 1: Field2 present, Field1 present - should be valid
+	testStruct := TestStruct{Field1: "value1", Field2: "value2"}
+	objValue := reflect.ValueOf(testStruct)
+	field1Value := reflect.ValueOf("value1")
+
+	result := isRequiredWith([]string{"Field2"}, field1Value, objValue)
+	if !result {
+		t.Error("isRequiredWith should return true when both fields are present")
+	}
+
+	// Case 2: Field2 present, Field1 empty - should be invalid
+	field1EmptyValue := reflect.ValueOf("")
+	result = isRequiredWith([]string{"Field2"}, field1EmptyValue, objValue)
+	if result {
+		t.Error("isRequiredWith should return false when Field2 is present but Field1 is empty")
+	}
+
+	// Case 3: Field2 empty, Field1 empty - should be valid
+	testStructEmpty := TestStruct{Field1: "", Field2: ""}
+	objValueEmpty := reflect.ValueOf(testStructEmpty)
+	result = isRequiredWith([]string{"Field2"}, field1EmptyValue, objValueEmpty)
+	if !result {
+		t.Error("isRequiredWith should return true when both fields are empty")
+	}
+}
+
+func TestValidateRequiredWithAllDirect(t *testing.T) {
+	type TestStruct struct {
+		Field1 string
+		Field2 string
+		Field3 string
+	}
+
+	// Case 1: All fields present - Field1 should be required and present
+	testStruct := TestStruct{Field1: "value1", Field2: "value2", Field3: "value3"}
+	objValue := reflect.ValueOf(testStruct)
+	field1Value := reflect.ValueOf("value1")
+
+	result := isRequiredWithAll([]string{"Field2", "Field3"}, field1Value, objValue)
+	if !result {
+		t.Error("isRequiredWithAll should return true when all fields are present")
+	}
+
+	// Case 2: Field2 and Field3 present, Field1 empty - should be invalid
+	field1EmptyValue := reflect.ValueOf("")
+	result = isRequiredWithAll([]string{"Field2", "Field3"}, field1EmptyValue, objValue)
+	if result {
+		t.Error("isRequiredWithAll should return false when Field2 and Field3 are present but Field1 is empty")
+	}
+
+	// Case 3: Only Field2 present, Field1 empty - should be valid (Field1 not required)
+	testStructPartial := TestStruct{Field1: "", Field2: "value2", Field3: ""}
+	objValuePartial := reflect.ValueOf(testStructPartial)
+	result = isRequiredWithAll([]string{"Field2", "Field3"}, field1EmptyValue, objValuePartial)
+	if !result {
+		t.Error("isRequiredWithAll should return true when not all required fields are present")
+	}
+}
+
+func TestValidateRequiredWithoutDirect(t *testing.T) {
+	type TestStruct struct {
+		Field1 string
+		Field2 string
+	}
+
+	// Case 1: Field2 absent, Field1 present - should be valid
+	testStruct := TestStruct{Field1: "value1", Field2: ""}
+	objValue := reflect.ValueOf(testStruct)
+	field1Value := reflect.ValueOf("value1")
+
+	result := isRequiredWithout([]string{"Field2"}, field1Value, objValue)
+	if !result {
+		t.Error("isRequiredWithout should return true when Field2 is absent and Field1 is present")
+	}
+
+	// Case 2: Field2 absent, Field1 absent - should be invalid
+	field1EmptyValue := reflect.ValueOf("")
+	result = isRequiredWithout([]string{"Field2"}, field1EmptyValue, objValue)
+	if result {
+		t.Error("isRequiredWithout should return false when Field2 is absent and Field1 is also absent")
+	}
+
+	// Case 3: Field2 present, Field1 absent - should be valid (Field1 not required)
+	testStructWithField2 := TestStruct{Field1: "", Field2: "value2"}
+	objValueWithField2 := reflect.ValueOf(testStructWithField2)
+	result = isRequiredWithout([]string{"Field2"}, field1EmptyValue, objValueWithField2)
+	if !result {
+		t.Error("isRequiredWithout should return true when Field2 is present (Field1 not required)")
+	}
+}
+
+func TestValidateRequiredWithoutAllDirect(t *testing.T) {
+	type TestStruct struct {
+		Field1 string
+		Field2 string
+		Field3 string
+	}
+
+	// Case 1: All fields absent, Field1 present - should be valid
+	testStruct := TestStruct{Field1: "value1", Field2: "", Field3: ""}
+	objValue := reflect.ValueOf(testStruct)
+	field1Value := reflect.ValueOf("value1")
+
+	result := isRequiredWithoutAll([]string{"Field2", "Field3"}, field1Value, objValue)
+	if !result {
+		t.Error("isRequiredWithoutAll should return true when all other fields are absent and Field1 is present")
+	}
+
+	// Case 2: All fields absent, Field1 absent - should be invalid
+	field1EmptyValue := reflect.ValueOf("")
+	result = isRequiredWithoutAll([]string{"Field2", "Field3"}, field1EmptyValue, objValue)
+	if result {
+		t.Error("isRequiredWithoutAll should return false when all fields including Field1 are absent")
+	}
+
+	// Case 3: Some field present, Field1 absent - should be valid (Field1 not required)
+	testStructPartial := TestStruct{Field1: "", Field2: "value2", Field3: ""}
+	objValuePartial := reflect.ValueOf(testStructPartial)
+	result = isRequiredWithoutAll([]string{"Field2", "Field3"}, field1EmptyValue, objValuePartial)
+	if !result {
+		t.Error("isRequiredWithoutAll should return true when some other fields are present (Field1 not required)")
+	}
+}
+
+func TestParameterValidatorsDirect(t *testing.T) {
+	// Test isGtParam
+	stringValue := reflect.ValueOf("hello")
+	result, err := isGtParam(stringValue, []string{"3"})
+	if err != nil || !result {
+		t.Errorf("isGtParam should return true for 'hello' > 3 characters: result=%v, err=%v", result, err)
+	}
+
+	shortString := reflect.ValueOf("hi")
+	result, err = isGtParam(shortString, []string{"3"})
+	if err != nil || result {
+		t.Errorf("isGtParam should return false for 'hi' > 3 characters: result=%v, err=%v", result, err)
+	}
+
+	// Test isGteParam
+	exactString := reflect.ValueOf("test")
+	result, err = isGteParam(exactString, []string{"4"})
+	if err != nil || !result {
+		t.Errorf("isGteParam should return true for 'test' >= 4 characters: result=%v, err=%v", result, err)
+	}
+
+	// Test isLtParam
+	result, err = isLtParam(shortString, []string{"3"})
+	if err != nil || !result {
+		t.Errorf("isLtParam should return true for 'hi' < 3 characters: result=%v, err=%v", result, err)
+	}
+
+	// Test isLteParam
+	result, err = isLteParam(exactString, []string{"4"})
+	if err != nil || !result {
+		t.Errorf("isLteParam should return true for 'test' <= 4 characters: result=%v, err=%v", result, err)
+	}
+
+	// Test with integer values
+	intValue := reflect.ValueOf(5)
+	result, err = isGtParam(intValue, []string{"3"})
+	if err != nil || !result {
+		t.Errorf("isGtParam should return true for 5 > 3: result=%v, err=%v", result, err)
+	}
+
+	// Test error cases
+	_, err = isGtParam(stringValue, []string{})
+	if err == nil {
+		t.Error("isGtParam should return error for empty params")
+	}
+
+	_, err = isGtParam(stringValue, []string{"invalid"})
+	if err == nil {
+		t.Error("isGtParam should return error for invalid numeric param")
+	}
+}
+
+// =============================================================================
+// Validation Edge Cases Tests
+// =============================================================================
+
+func TestValidateSameEdgeCases(t *testing.T) {
+	type SameTest struct {
+		Password        string `valid:"required"`
+		ConfirmPassword string `valid:"same=Password"`
+	}
+
+	tests := []struct {
+		name     string
+		data     SameTest
+		expected bool
+	}{
+		{"Passwords match - valid", SameTest{Password: "secret123", ConfirmPassword: "secret123"}, true},
+		{"Passwords don't match - invalid", SameTest{Password: "secret123", ConfirmPassword: "different"}, false},
+		{"Empty passwords match - invalid (required)", SameTest{Password: "", ConfirmPassword: ""}, false},
+		{"One empty, one filled - invalid", SameTest{Password: "secret", ConfirmPassword: ""}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateLtEdgeCases(t *testing.T) {
+	type LtTest struct {
+		Value string `valid:"lt=10"`
+	}
+
+	tests := []struct {
+		name     string
+		data     LtTest
+		expected bool
+	}{
+		{"Short string - valid", LtTest{Value: "test"}, true},
+		{"Long string - invalid", LtTest{Value: "this is a very long string"}, false},
+		{"Empty string - valid", LtTest{Value: ""}, true},
+		{"Exactly 9 chars - valid", LtTest{Value: "123456789"}, true},
+		{"Exactly 10 chars - invalid", LtTest{Value: "1234567890"}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateLteEdgeCases(t *testing.T) {
+	type LteTest struct {
+		Value string `valid:"lte=5"`
+	}
+
+	tests := []struct {
+		name     string
+		data     LteTest
+		expected bool
+	}{
+		{"Short string - valid", LteTest{Value: "test"}, true},
+		{"Exactly 5 chars - valid", LteTest{Value: "hello"}, true},
+		{"6 chars - invalid", LteTest{Value: "hello!"}, false},
+		{"Empty string - valid", LteTest{Value: ""}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateGtEdgeCases(t *testing.T) {
+	type GtTest struct {
+		Value string `valid:"gt=3"`
+	}
+
+	tests := []struct {
+		name     string
+		data     GtTest
+		expected bool
+	}{
+		{"4 chars - valid", GtTest{Value: "test"}, true},
+		{"Exactly 3 chars - invalid", GtTest{Value: "abc"}, false},
+		{"2 chars - invalid", GtTest{Value: "ab"}, false},
+		{"Empty string - invalid", GtTest{Value: ""}, false},
+		{"10 chars - valid", GtTest{Value: "verylongst"}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateGteEdgeCases(t *testing.T) {
+	type GteTest struct {
+		Value string `valid:"gte=4"`
+	}
+
+	tests := []struct {
+		name     string
+		data     GteTest
+		expected bool
+	}{
+		{"Exactly 4 chars - valid", GteTest{Value: "test"}, true},
+		{"5 chars - valid", GteTest{Value: "tests"}, true},
+		{"3 chars - invalid", GteTest{Value: "abc"}, false},
+		{"Empty string - invalid", GteTest{Value: ""}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateSizeEdgeCases(t *testing.T) {
+	type SizeTest struct {
+		Value string `valid:"size=5"`
+	}
+
+	tests := []struct {
+		name     string
+		data     SizeTest
+		expected bool
+	}{
+		{"Exactly 5 chars - valid", SizeTest{Value: "hello"}, true},
+		{"4 chars - invalid", SizeTest{Value: "test"}, false},
+		{"6 chars - invalid", SizeTest{Value: "hellos"}, false},
+		{"Empty string - invalid", SizeTest{Value: ""}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateMaxEdgeCases(t *testing.T) {
+	type MaxTest struct {
+		Value string `valid:"max=8"`
+	}
+
+	tests := []struct {
+		name     string
+		data     MaxTest
+		expected bool
+	}{
+		{"Under max - valid", MaxTest{Value: "short"}, true},
+		{"Exactly max - valid", MaxTest{Value: "exactly8"}, true},
+		{"Over max - invalid", MaxTest{Value: "toolongstring"}, false},
+		{"Empty string - valid", MaxTest{Value: ""}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateMinEdgeCases(t *testing.T) {
+	type MinTest struct {
+		Value string `valid:"min=3"`
+	}
+
+	tests := []struct {
+		name     string
+		data     MinTest
+		expected bool
+	}{
+		{"Above min - valid", MinTest{Value: "test"}, true},
+		{"Exactly min - valid", MinTest{Value: "abc"}, true},
+		{"Below min - invalid", MinTest{Value: "ab"}, false},
+		{"Empty string - invalid", MinTest{Value: ""}, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestValidateDistinctAdvanced(t *testing.T) {
+	type DistinctTest struct {
+		Items []string `valid:"distinct"`
+	}
+
+	tests := []struct {
+		name     string
+		data     DistinctTest
+		expected bool
+	}{
+		{"All unique - valid", DistinctTest{Items: []string{"a", "b", "c", "d"}}, true},
+		{"Has duplicates - invalid", DistinctTest{Items: []string{"a", "b", "c", "a"}}, false},
+		{"Empty slice - valid", DistinctTest{Items: []string{}}, true},
+		{"Single item - valid", DistinctTest{Items: []string{"a"}}, true},
+		{"Two identical - invalid", DistinctTest{Items: []string{"a", "a"}}, false},
+		{"Case sensitive - valid", DistinctTest{Items: []string{"A", "a", "B", "b"}}, true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateStruct(test.data)
+			actual := err == nil
+			if actual != test.expected {
+				t.Errorf("Expected %t for %s, got %t. Error: %v", test.expected, test.name, actual, err)
+			}
+		})
+	}
+}
+
+func TestDirectValidationFunctions(t *testing.T) {
+	// Test isDistinct function directly
+	result, err := isDistinct(reflect.ValueOf([]string{"a", "b", "c"}))
+	if err != nil || !result {
+		t.Error("Expected distinct values to validate")
+	}
+
+	result, err = isDistinct(reflect.ValueOf([]string{"a", "b", "a"}))
+	if err != nil || result {
+		t.Error("Expected duplicate values to fail")
+	}
+
+	// Test empty slice
+	result, err = isDistinct(reflect.ValueOf([]string{}))
+	if err != nil || !result {
+		t.Error("Expected empty slice to validate")
+	}
+
+	// Test single item
+	result, err = isDistinct(reflect.ValueOf([]string{"single"}))
+	if err != nil || !result {
+		t.Error("Expected single item to validate")
 	}
 }

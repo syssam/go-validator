@@ -18,62 +18,63 @@ type (
 )
 
 // =============================================================================
-// Generic validation functions - use generics for multi-type support
+// Generic validation functions - use generics for type-safe validation
+// These use the "IsGeneric" prefix to distinguish from reflection-based versions
 // =============================================================================
 
-// IsRequired checks if a comparable value is not zero.
-func IsRequired[T comparable](value T) bool {
+// IsGenericRequired checks if a comparable value is not zero.
+func IsGenericRequired[T comparable](value T) bool {
 	var zero T
 	return value != zero
 }
 
-// IsRequiredSlice checks if a slice is not empty.
-func IsRequiredSlice[T any](value []T) bool {
+// IsGenericRequiredSlice checks if a slice is not empty.
+func IsGenericRequiredSlice[T any](value []T) bool {
 	return len(value) > 0
 }
 
-// IsRequiredMap checks if a map is not empty.
-func IsRequiredMap[K comparable, V any](value map[K]V) bool {
+// IsGenericRequiredMap checks if a map is not empty.
+func IsGenericRequiredMap[K comparable, V any](value map[K]V) bool {
 	return len(value) > 0
 }
 
-// IsMin checks if value >= min.
-func IsMin[T NumericType](value, min T) bool {
+// IsGenericMin checks if value >= min.
+func IsGenericMin[T NumericType](value, min T) bool {
 	return value >= min
 }
 
-// IsMax checks if value <= max.
-func IsMax[T NumericType](value, max T) bool {
+// IsGenericMax checks if value <= max.
+func IsGenericMax[T NumericType](value, max T) bool {
 	return value <= max
 }
 
-// IsBetween checks if min <= value <= max.
-func IsBetween[T NumericType](value, min, max T) bool {
+// IsGenericBetween checks if min <= value <= max.
+func IsGenericBetween[T NumericType](value, min, max T) bool {
 	return value >= min && value <= max
 }
 
-// IsGt checks if value > threshold.
-func IsGt[T OrderedType](value, threshold T) bool {
+// IsGenericGt checks if value > threshold.
+func IsGenericGt[T OrderedType](value, threshold T) bool {
 	return value > threshold
 }
 
-// IsGte checks if value >= threshold.
-func IsGte[T OrderedType](value, threshold T) bool {
+// IsGenericGte checks if value >= threshold.
+func IsGenericGte[T OrderedType](value, threshold T) bool {
 	return value >= threshold
 }
 
-// IsLt checks if value < threshold.
-func IsLt[T OrderedType](value, threshold T) bool {
+// IsGenericLt checks if value < threshold.
+func IsGenericLt[T OrderedType](value, threshold T) bool {
 	return value < threshold
 }
 
-// IsLte checks if value <= threshold.
-func IsLte[T OrderedType](value, threshold T) bool {
+// IsGenericLte checks if value <= threshold.
+func IsGenericLte[T OrderedType](value, threshold T) bool {
 	return value <= threshold
 }
 
-// IsDistinct checks if all slice elements are unique.
-func IsDistinct[T comparable](value []T) bool {
+// IsGenericDistinct checks if all slice elements are unique.
+func IsGenericDistinct[T comparable](value []T) bool {
 	seen := make(map[T]struct{}, len(value))
 	for _, v := range value {
 		if _, exists := seen[v]; exists {
@@ -84,8 +85,8 @@ func IsDistinct[T comparable](value []T) bool {
 	return true
 }
 
-// IsIn checks if value is in allowed list.
-func IsIn[T comparable](value T, allowed []T) bool {
+// IsGenericIn checks if value is in allowed list.
+func IsGenericIn[T comparable](value T, allowed []T) bool {
 	for _, a := range allowed {
 		if value == a {
 			return true
@@ -94,8 +95,8 @@ func IsIn[T comparable](value T, allowed []T) bool {
 	return false
 }
 
-// IsNotIn checks if value is not in disallowed list.
-func IsNotIn[T comparable](value T, disallowed []T) bool {
+// IsGenericNotIn checks if value is not in disallowed list.
+func IsGenericNotIn[T comparable](value T, disallowed []T) bool {
 	for _, d := range disallowed {
 		if value == d {
 			return false

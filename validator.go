@@ -81,6 +81,155 @@ func buildFieldName(namespace, fieldName []byte) string {
 	return result
 }
 
+// =============================================================================
+// Helper Functions - Reduce code duplication and improve performance
+// =============================================================================
+
+// deref dereferences interface and pointer values to their underlying value.
+// This consolidates the repeated pattern found 30+ times in the codebase.
+func deref(v reflect.Value) reflect.Value {
+	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return v
+		}
+		v = v.Elem()
+	}
+	return v
+}
+
+// isValidAndNonEmpty checks if a value is valid and non-empty.
+// Returns true if validation should be skipped (value is empty/invalid).
+func isValidAndNonEmpty(v reflect.Value) bool {
+	v = deref(v)
+	return v.IsValid() && !Empty(v)
+}
+
+// comparisonOp represents a comparison operator
+type comparisonOp string
+
+const (
+	opGt  comparisonOp = ">"
+	opGte comparisonOp = ">="
+	opLt  comparisonOp = "<"
+	opLte comparisonOp = "<="
+	opEq  comparisonOp = "=="
+)
+
+// compareValue is a unified comparison function that handles all numeric types.
+// This replaces the duplicated switch statements in isMin, isMax, isGt, isGte, isLt, isLte.
+func compareValue(v reflect.Value, params []string, op comparisonOp, ruleName string) (bool, error) {
+	if len(params) == 0 {
+		return false, fmt.Errorf("validator: %s rule requires at least one parameter", ruleName)
+	}
+
+	// Check for decimal.Decimal type first
+	if d, ok := asDecimal(v); ok {
+		p, _, err := parseDecimalParams(params)
+		if err != nil {
+			return false, fmt.Errorf("validator: %s decimal: %w", ruleName, err)
+		}
+		switch op {
+		case opGt:
+			return IsDecimalGt(d, p), nil
+		case opGte:
+			return IsDecimalGte(d, p), nil
+		case opLt:
+			return IsDecimalLt(d, p), nil
+		case opLte:
+			return IsDecimalLte(d, p), nil
+		case opEq:
+			return IsDecimalEqual(d, p), nil
+		}
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		p, err := ToInt(params[0])
+		if err != nil {
+			return false, fmt.Errorf("validator: invalid parameter for %s rule on string field: %w", ruleName, err)
+		}
+		return compareString(v.String(), p, string(op))
+
+	case reflect.Slice, reflect.Map, reflect.Array:
+		p, err := ToInt(params[0])
+		if err != nil {
+			return false, fmt.Errorf("validator: invalid parameter for %s rule on collection field: %w", ruleName, err)
+		}
+		return compareInt64(int64(v.Len()), p, string(op))
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		p, err := ToInt(params[0])
+		if err != nil {
+			return false, fmt.Errorf("validator: invalid parameter for %s rule on int field: %w", ruleName, err)
+		}
+		return compareInt64(v.Int(), p, string(op))
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		p, err := ToUint(params[0])
+		if err != nil {
+			return false, fmt.Errorf("validator: invalid parameter for %s rule on uint field: %w", ruleName, err)
+		}
+		return compareUint64(v.Uint(), p, string(op))
+
+	case reflect.Float32, reflect.Float64:
+		p, err := ToFloat(params[0])
+		if err != nil {
+			return false, fmt.Errorf("validator: invalid parameter for %s rule on float field: %w", ruleName, err)
+		}
+		return compareFloat64(v.Float(), p, string(op))
+
+	default:
+		return false, fmt.Errorf("validator: %s rule is not supported for type %s", ruleName, v.Kind())
+	}
+}
+
+// compareFields compares two reflect.Value fields with the given operator.
+// This consolidates isSame, isLt, isLte, isGt, isGte field comparison functions.
+func compareFields(v, anotherField reflect.Value, op comparisonOp, ruleName string) (bool, error) {
+	if !v.IsValid() || !anotherField.IsValid() {
+		return false, fmt.Errorf("validator: %s invalid reflection values", ruleName)
+	}
+	if v.Kind() != anotherField.Kind() {
+		return false, fmt.Errorf("validator: %s The two fields must be of the same type %T, %T", ruleName, v.Interface(), anotherField.Interface())
+	}
+
+	// Check for decimal.Decimal type first
+	if d1, ok := asDecimal(v); ok {
+		if d2, ok := asDecimal(anotherField); ok {
+			switch op {
+			case opGt:
+				return IsDecimalGt(d1, d2), nil
+			case opGte:
+				return IsDecimalGte(d1, d2), nil
+			case opLt:
+				return IsDecimalLt(d1, d2), nil
+			case opLte:
+				return IsDecimalLte(d1, d2), nil
+			case opEq:
+				return IsDecimalEqual(d1, d2), nil
+			}
+		}
+	}
+
+	switch v.Kind() {
+	case reflect.String:
+		if op == opEq {
+			return v.String() == anotherField.String(), nil
+		}
+		return compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), string(op))
+	case reflect.Slice, reflect.Map, reflect.Array:
+		return compareInt64(int64(v.Len()), int64(anotherField.Len()), string(op))
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return compareInt64(v.Int(), anotherField.Int(), string(op))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return compareUint64(v.Uint(), anotherField.Uint(), string(op))
+	case reflect.Float32, reflect.Float64:
+		return compareFloat64(v.Float(), anotherField.Float(), string(op))
+	default:
+		return false, fmt.Errorf("validator: %s unsupported type %T", ruleName, v.Interface())
+	}
+}
+
 const tagName string = "valid"
 
 // Validator construct
@@ -98,10 +247,10 @@ func New() *Validator {
 	return &Validator{}
 }
 
-// validateBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
+// isBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
 //
 //nolint:gocyclo,gocritic // Complex validation logic with parameter names
-func validateBetween(v reflect.Value, params []string) (bool, error) {
+func isBetween(v reflect.Value, params []string) (bool, error) {
 	if len(params) != 2 {
 		return false, fmt.Errorf("validator: Between params length must be 2")
 	}
@@ -191,7 +340,7 @@ func (v *Validator) createFieldError(name, structName, tagName, messageName stri
 	}
 }
 
-// validateWithRuleMap validates a value using RuleMap and returns formatted error if validation fails
+// isWithRuleMap validates a value using RuleMap and returns formatted error if validation fails
 func (v *Validator) validateWithRuleMap(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	if validfunc, ok := RuleMap[tag.name]; ok {
 		isValid, funcError := validfunc(value)
@@ -207,7 +356,7 @@ func (v *Validator) validateWithRuleMap(tag *ValidTag, value reflect.Value, f *f
 	return nil
 }
 
-// validateWithParamRuleMap validates a value using ParamRuleMap and returns formatted error if validation fails
+// isWithParamRuleMap validates a value using ParamRuleMap and returns formatted error if validation fails
 func (v *Validator) validateWithParamRuleMap(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	if validfunc, ok := ParamRuleMap[tag.name]; ok {
 		isValid, funcError := validfunc(value, tag.params)
@@ -223,7 +372,7 @@ func (v *Validator) validateWithParamRuleMap(tag *ValidTag, value reflect.Value,
 	return nil
 }
 
-// validateWithStringRulesMap validates a string value using StringRulesMap and returns formatted error if validation fails
+// isWithStringRulesMap validates a string value using StringRulesMap and returns formatted error if validation fails
 func (v *Validator) validateWithStringRulesMap(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	if validfunc, ok := StringRulesMap[tag.name]; ok {
 		isValid := validfunc(value.String())
@@ -239,7 +388,7 @@ func (v *Validator) validateWithStringRulesMap(tag *ValidTag, value reflect.Valu
 	return nil
 }
 
-// validateWithStringParamRulesMap validates a string value using StringParamRulesMap and returns formatted error if validation fails
+// isWithStringParamRulesMap validates a string value using StringParamRulesMap and returns formatted error if validation fails
 func (v *Validator) validateWithStringParamRulesMap(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	if validfunc, ok := StringParamRulesMap[tag.name]; ok {
 		isValid := validfunc(value.String(), tag.params)
@@ -255,7 +404,7 @@ func (v *Validator) validateWithStringParamRulesMap(tag *ValidTag, value reflect
 	return nil
 }
 
-// validateCommonRules applies common validation rules (RuleMap, ParamRuleMap, dependent rules)
+// isCommonRules applies common validation rules (RuleMap, ParamRuleMap, dependent rules)
 func (v *Validator) validateCommonRules(tags otherValidTags, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	for _, tag := range tags {
 		handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
@@ -344,7 +493,7 @@ func checkRequiredIfCondition(v reflect.Value, values, params []string, tag *Val
 	return true, nil
 }
 
-// validateCustomTypeRules validates using CustomTypeRuleMap
+// isCustomTypeRules validates using CustomTypeRuleMap
 func (v *Validator) validateCustomTypeRules(tags otherValidTags, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	for _, tag := range tags {
 		if validatefunc, ok := CustomTypeRuleMap.Get(tag.name); ok {
@@ -361,7 +510,7 @@ func (v *Validator) validateCustomTypeRules(tags otherValidTags, value reflect.V
 	return nil
 }
 
-// validateMapFields validates map structure and each element
+// isMapFields validates map structure and each element
 func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
 	if value.Type().Key().Kind() != reflect.String {
 		return &UnsupportedTypeError{value.Type()}
@@ -390,7 +539,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 	return nil
 }
 
-// validateSliceFields validates slice/array structure and each element
+// isSliceFields validates slice/array structure and each element
 func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
 	for i := 0; i < value.Len(); i++ {
 		var err error
@@ -413,14 +562,14 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 	return nil
 }
 
-// ValidateBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
-func ValidateBetween(i interface{}, params []string) (bool, error) {
+// IsBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
+func IsBetween(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateBetween(v, params)
+	return isBetween(v, params)
 }
 
-// validateDigitsBetween check The field under validation must have a length between the given min and max.
-func validateDigitsBetween(v reflect.Value, params []string) (bool, error) {
+// isDigitsBetween check The field under validation must have a length between the given min and max.
+func isDigitsBetween(v reflect.Value, params []string) (bool, error) {
 	if len(params) != 2 {
 		return false, fmt.Errorf("validator: DigitsBetween params length must be 2")
 	}
@@ -455,17 +604,17 @@ func validateDigitsBetween(v reflect.Value, params []string) (bool, error) {
 	return false, fmt.Errorf("validator: DigitsBetween unsupported type %T", v.Interface())
 }
 
-// ValidateDigitsBetween check The field under validation must have a length between the given min and max.
-func ValidateDigitsBetween(i interface{}, params []string) (bool, error) {
+// IsDigitsBetween check The field under validation must have a length between the given min and max.
+func IsDigitsBetween(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateDigitsBetween(v, params)
+	return isDigitsBetween(v, params)
 }
 
-// validateSize The field under validation must have a size matching the given value.
+// isSize The field under validation must have a size matching the given value.
 // For string data, value corresponds to the number of characters.
 // For numeric data, value corresponds to a given integer value.
 // For an array | map | slice, size corresponds to the count of the array | map | slice.
-func validateSize(v reflect.Value, param []string) (bool, error) {
+func isSize(v reflect.Value, param []string) (bool, error) {
 	valid := false
 	var err error
 	switch v.Kind() {
@@ -521,636 +670,143 @@ func validateSize(v reflect.Value, param []string) (bool, error) {
 	return valid, err
 }
 
-// ValidateSize The field under validation must have a size matching the given value.
+// IsSize The field under validation must have a size matching the given value.
 // For string data, value corresponds to the number of characters.
 // For numeric data, value corresponds to a given integer value.
 // For an array | map | slice, size corresponds to the count of the array | map | slice.
-func ValidateSize(i interface{}, params []string) (bool, error) {
+func IsSize(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateSize(v, params)
+	return isSize(v, params)
 }
 
-// validateMax is the validation function for validating if the current field's value is less than or equal to the param's value.
-//
-//nolint:gocyclo,gocritic // Complex validation logic
-func validateMax(v reflect.Value, param []string) (bool, error) {
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(param)
-		if err != nil {
-			return false, fmt.Errorf("validator: Max decimal: %w", err)
-		}
-		return IsDecimalLte(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on string field, value: %w", err)
-		}
-		valid, err = compareString(v.String(), p, "<=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on string field, value: %w", err)
-		}
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on collection field, value: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, "<=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on collection field, value: %w", err)
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, "<=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, "<=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, "<=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Max rule on numeric field, value: %w", err)
-		}
-	default:
-		return false, fmt.Errorf("validator: Max unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isMax is the validation function for validating if the current field's value is less than or equal to the param's value.
+func isMax(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opLte, "Max")
 }
 
-// ValidateMax is the validation function for validating if the current field's value is less than or equal to the param's value.
-func ValidateMax(i interface{}, params []string) (bool, error) {
+// IsMax is the validation function for validating if the current field's value is less than or equal to the param's value.
+func IsMax(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateMax(v, params)
+	return isMax(v, params)
 }
 
-// validateMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func validateMin(v reflect.Value, param []string) (bool, error) {
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(param)
-		if err != nil {
-			return false, fmt.Errorf("validator: Min decimal: %w", err)
-		}
-		return IsDecimalGte(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on string field, value: %w", err)
-		}
-		valid, err = compareString(v.String(), p, ">=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on string field, value: %w", err)
-		}
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on collection field, value: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, ">=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on collection field, value: %w", err)
-		}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, ">=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, ">=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(param[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, ">=")
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Min rule on numeric field, value: %w", err)
-		}
-	default:
-		return false, fmt.Errorf("validator: Min unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func isMin(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opGte, "Min")
 }
 
-// ValidateMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func ValidateMin(i interface{}, params []string) (bool, error) {
+// IsMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func IsMin(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateMin(v, params)
+	return isMin(v, params)
 }
 
-// validateGtParam is the validation function for validating if the current field's value is greater than the param's value.
-func validateGtParam(v reflect.Value, params []string) (bool, error) {
-	if len(params) == 0 {
-		return false, fmt.Errorf("validator: Gt rule requires at least one parameter")
-	}
-
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(params)
-		if err != nil {
-			return false, fmt.Errorf("validator: Gt decimal: %w", err)
-		}
-		return IsDecimalGt(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gt rule on string field: %w", err)
-		}
-		valid, err = compareString(v.String(), p, ">")
-		if err != nil {
-			return false, fmt.Errorf("validator: comparison error for Gt rule on string field: %w", err)
-		}
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gt rule on collection field: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, ">")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gt rule on int field: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, ">")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gt rule on uint field: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, ">")
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gt rule on float field: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, ">")
-	default:
-		return false, fmt.Errorf("validator: Gt rule is not supported for type %s", v.Kind())
-	}
-
-	return valid, err
+// isGtParam is the validation function for validating if the current field's value is greater than the param's value.
+func isGtParam(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opGt, "Gt")
 }
 
-// ValidateGtParam is the validation function for validating if the current field's value is greater than the param's value.
-func ValidateGtParam(i interface{}, params []string) (bool, error) {
+// IsGtParam is the validation function for validating if the current field's value is greater than the param's value.
+func IsGtParam(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateGtParam(v, params)
+	return isGtParam(v, params)
 }
 
-// validateGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func validateGteParam(v reflect.Value, params []string) (bool, error) {
-	if len(params) == 0 {
-		return false, fmt.Errorf("validator: Gte rule requires at least one parameter")
-	}
-
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(params)
-		if err != nil {
-			return false, fmt.Errorf("validator: Gte decimal: %w", err)
-		}
-		return IsDecimalGte(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gte rule on string field: %w", err)
-		}
-		valid, err = compareString(v.String(), p, ">=")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gte rule on collection field: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, ">=")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gte rule on int field: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, ">=")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gte rule on uint field: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, ">=")
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Gte rule on float field: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, ">=")
-	default:
-		return false, fmt.Errorf("validator: Gte rule is not supported for type %s", v.Kind())
-	}
-
-	return valid, err
+// isGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func isGteParam(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opGte, "Gte")
 }
 
-// ValidateGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func ValidateGteParam(i interface{}, params []string) (bool, error) {
+// IsGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func IsGteParam(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateGteParam(v, params)
+	return isGteParam(v, params)
 }
 
-// validateLtParam is the validation function for validating if the current field's value is less than the param's value.
-func validateLtParam(v reflect.Value, params []string) (bool, error) {
-	if len(params) == 0 {
-		return false, fmt.Errorf("validator: Lt rule requires at least one parameter")
-	}
-
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(params)
-		if err != nil {
-			return false, fmt.Errorf("validator: Lt decimal: %w", err)
-		}
-		return IsDecimalLt(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lt rule on string field: %w", err)
-		}
-		valid, err = compareString(v.String(), p, "<")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lt rule on collection field: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, "<")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lt rule on int field: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, "<")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lt rule on uint field: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, "<")
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lt rule on float field: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, "<")
-	default:
-		return false, fmt.Errorf("validator: Lt rule is not supported for type %s", v.Kind())
-	}
-
-	return valid, err
+// isLtParam is the validation function for validating if the current field's value is less than the param's value.
+func isLtParam(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opLt, "Lt")
 }
 
-// ValidateLtParam is the validation function for validating if the current field's value is less than the param's value.
-func ValidateLtParam(i interface{}, params []string) (bool, error) {
+// IsLtParam is the validation function for validating if the current field's value is less than the param's value.
+func IsLtParam(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateLtParam(v, params)
+	return isLtParam(v, params)
 }
 
-// validateLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
-func validateLteParam(v reflect.Value, params []string) (bool, error) {
-	if len(params) == 0 {
-		return false, fmt.Errorf("validator: Lte rule requires at least one parameter")
-	}
-
-	// Check for decimal.Decimal type first
-	if d, ok := asDecimal(v); ok {
-		p, _, err := parseDecimalParams(params)
-		if err != nil {
-			return false, fmt.Errorf("validator: Lte decimal: %w", err)
-		}
-		return IsDecimalLte(d, p), nil
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lte rule on string field: %w", err)
-		}
-		valid, err = compareString(v.String(), p, "<=")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lte rule on collection field: %w", err)
-		}
-		valid, err = compareInt64(int64(v.Len()), p, "<=")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		p, err := ToInt(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lte rule on int field: %w", err)
-		}
-		valid, err = compareInt64(v.Int(), p, "<=")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		p, err := ToUint(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lte rule on uint field: %w", err)
-		}
-		valid, err = compareUint64(v.Uint(), p, "<=")
-	case reflect.Float32, reflect.Float64:
-		p, err := ToFloat(params[0])
-		if err != nil {
-			return false, fmt.Errorf("validator: invalid parameter for Lte rule on float field: %w", err)
-		}
-		valid, err = compareFloat64(v.Float(), p, "<=")
-	default:
-		return false, fmt.Errorf("validator: Lte rule is not supported for type %s", v.Kind())
-	}
-
-	return valid, err
+// isLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
+func isLteParam(v reflect.Value, params []string) (bool, error) {
+	return compareValue(v, params, opLte, "Lte")
 }
 
-// ValidateLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
-func ValidateLteParam(i interface{}, params []string) (bool, error) {
+// IsLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
+func IsLteParam(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateLteParam(v, params)
+	return isLteParam(v, params)
 }
 
-// validateSame is the validation function for validating if the current field's value equal the param's value.
-func validateSame(v, anotherField reflect.Value) (bool, error) {
-	if !v.IsValid() || !anotherField.IsValid() {
-		return false, fmt.Errorf("validator: Same invalid reflection values")
-	}
-	if v.Kind() != anotherField.Kind() {
-		return false, fmt.Errorf("validator: Same The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface())
-	}
-
-	var valid bool
-	var err error
-
-	// Check for decimal.Decimal type first
-	if d1, ok := asDecimal(v); ok {
-		if d2, ok := asDecimal(anotherField); ok {
-			return IsDecimalEqual(d1, d2), nil
-		}
-	}
-
-	switch v.Kind() {
-	case reflect.String:
-		valid, err = v.String() == anotherField.String(), nil
-	case reflect.Slice, reflect.Map, reflect.Array:
-		valid, err = compareInt64(int64(v.Len()), int64(anotherField.Len()), "==")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valid, err = compareInt64(v.Int(), anotherField.Int(), "==")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valid, err = compareUint64(v.Uint(), anotherField.Uint(), "==")
-	case reflect.Float32, reflect.Float64:
-		valid, err = compareFloat64(v.Float(), anotherField.Float(), "==")
-	default:
-		return false, fmt.Errorf("validator: Same unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isSame is the validation function for validating if the current field's value equal the param's value.
+func isSame(v, anotherField reflect.Value) (bool, error) {
+	return compareFields(v, anotherField, opEq, "Same")
 }
 
-// ValidateSame is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func ValidateSame(i, a interface{}) (bool, error) {
+// IsSame is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func IsSame(i, a interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
-	return validateSame(v, anotherField)
+	return isSame(v, anotherField)
 }
 
-// validateLt is the validation function for validating if the current field's value is less than the param's value.
-func validateLt(v, anotherField reflect.Value) (bool, error) {
-	if !v.IsValid() || !anotherField.IsValid() {
-		return false, fmt.Errorf("validator: Lt invalid reflection values")
-	}
-	if v.Kind() != anotherField.Kind() {
-		return false, fmt.Errorf("validator: Lt The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface())
-	}
-
-	// Check for decimal.Decimal type first
-	if d1, ok := asDecimal(v); ok {
-		if d2, ok := asDecimal(anotherField); ok {
-			return IsDecimalLt(d1, d2), nil
-		}
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		valid, err = compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), "<")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		valid, err = compareInt64(int64(v.Len()), int64(anotherField.Len()), "<")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valid, err = compareInt64(v.Int(), anotherField.Int(), "<")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valid, err = compareUint64(v.Uint(), anotherField.Uint(), "<")
-	case reflect.Float32, reflect.Float64:
-		valid, err = compareFloat64(v.Float(), anotherField.Float(), "<")
-	default:
-		return false, fmt.Errorf("validator: Lt unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isLt is the validation function for validating if the current field's value is less than the param's value.
+func isLt(v, anotherField reflect.Value) (bool, error) {
+	return compareFields(v, anotherField, opLt, "Lt")
 }
 
-// ValidateLt is the validation function for validating if the current field's value is less than the param's value.
-func ValidateLt(i, a interface{}) (bool, error) {
+// IsLt is the validation function for validating if the current field's value is less than the param's value.
+func IsLt(i, a interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
-	return validateLt(v, anotherField)
+	return isLt(v, anotherField)
 }
 
-// validateLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func validateLte(v, anotherField reflect.Value) (bool, error) {
-	if !v.IsValid() || !anotherField.IsValid() {
-		return false, fmt.Errorf("validator: Lte invalid reflection values")
-	}
-	if v.Kind() != anotherField.Kind() {
-		return false, fmt.Errorf("validator: Lte The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface())
-	}
-
-	// Check for decimal.Decimal type first
-	if d1, ok := asDecimal(v); ok {
-		if d2, ok := asDecimal(anotherField); ok {
-			return IsDecimalLte(d1, d2), nil
-		}
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		valid, err = compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), "<=")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		valid, err = compareInt64(int64(v.Len()), int64(anotherField.Len()), "<=")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valid, err = compareInt64(v.Int(), anotherField.Int(), "<=")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valid, err = compareUint64(v.Uint(), anotherField.Uint(), "<=")
-	case reflect.Float32, reflect.Float64:
-		valid, err = compareFloat64(v.Float(), anotherField.Float(), "<=")
-	default:
-		return false, fmt.Errorf("validator: Lte unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isLte is the validation function for validating if the current field's value is less than or equal to the param's value.
+func isLte(v, anotherField reflect.Value) (bool, error) {
+	return compareFields(v, anotherField, opLte, "Lte")
 }
 
-// ValidateLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func ValidateLte(i, a interface{}) (bool, error) {
+// IsLte is the validation function for validating if the current field's value is less than or equal to the param's value.
+func IsLte(i, a interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
-	return validateLte(v, anotherField)
+	return isLte(v, anotherField)
 }
 
-// validateGt is the validation function for validating if the current field's value is greater than to the param's value.
-func validateGt(v, anotherField reflect.Value) (bool, error) {
-	if !v.IsValid() || !anotherField.IsValid() {
-		return false, fmt.Errorf("validator: Gt invalid reflection values")
-	}
-	if v.Kind() != anotherField.Kind() {
-		return false, fmt.Errorf("validator: Gt The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface())
-	}
-
-	// Check for decimal.Decimal type first
-	if d1, ok := asDecimal(v); ok {
-		if d2, ok := asDecimal(anotherField); ok {
-			return IsDecimalGt(d1, d2), nil
-		}
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		valid, err = compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), ">")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		valid, err = compareInt64(int64(v.Len()), int64(anotherField.Len()), ">")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valid, err = compareInt64(v.Int(), anotherField.Int(), ">")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valid, err = compareUint64(v.Uint(), anotherField.Uint(), ">")
-	case reflect.Float32, reflect.Float64:
-		valid, err = compareFloat64(v.Float(), anotherField.Float(), ">")
-	default:
-		return false, fmt.Errorf("validator: Gt unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isGt is the validation function for validating if the current field's value is greater than to the param's value.
+func isGt(v, anotherField reflect.Value) (bool, error) {
+	return compareFields(v, anotherField, opGt, "Gt")
 }
 
-// ValidateGt is the validation function for validating if the current field's value is greater than to the param's value.
-func ValidateGt(i, a interface{}) (bool, error) {
+// IsGt is the validation function for validating if the current field's value is greater than to the param's value.
+func IsGt(i, a interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
-	return validateGt(v, anotherField)
+	return isGt(v, anotherField)
 }
 
-// validateGte is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func validateGte(v, anotherField reflect.Value) (bool, error) {
-	if !v.IsValid() || !anotherField.IsValid() {
-		return false, fmt.Errorf("validator: Gte invalid reflection values")
-	}
-	if v.Kind() != anotherField.Kind() {
-		return false, fmt.Errorf("validator: Gte The two fields must be of the same type %T, %T", v.Interface(), anotherField.Interface())
-	}
-
-	// Check for decimal.Decimal type first
-	if d1, ok := asDecimal(v); ok {
-		if d2, ok := asDecimal(anotherField); ok {
-			return IsDecimalGte(d1, d2), nil
-		}
-	}
-
-	var valid bool
-	var err error
-
-	switch v.Kind() {
-	case reflect.String:
-		valid, err = compareString(v.String(), int64(utf8.RuneCountInString(anotherField.String())), ">=")
-	case reflect.Slice, reflect.Map, reflect.Array:
-		valid, err = compareInt64(int64(v.Len()), int64(anotherField.Len()), ">=")
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		valid, err = compareInt64(v.Int(), anotherField.Int(), ">=")
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		valid, err = compareUint64(v.Uint(), anotherField.Uint(), ">=")
-	case reflect.Float32, reflect.Float64:
-		valid, err = compareFloat64(v.Float(), anotherField.Float(), ">=")
-	default:
-		return false, fmt.Errorf("validator: Gte unsupported type %T", v.Interface())
-	}
-
-	return valid, err
+// isGte is the validation function for validating if the current field's value is greater than or equal to the param's value.
+func isGte(v, anotherField reflect.Value) (bool, error) {
+	return compareFields(v, anotherField, opGte, "Gte")
 }
 
-// ValidateGte is the validation function for validating if the current field's value is greater than to the param's value.
-func ValidateGte(i, a interface{}) (bool, error) {
+// IsGte is the validation function for validating if the current field's value is greater than to the param's value.
+func IsGte(i, a interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
-	return validateGte(v, anotherField)
+	return isGte(v, anotherField)
 }
 
-// validateDistinct is the validation function for validating an attribute is unique among other values.
-func validateDistinct(v reflect.Value) (bool, error) {
+// isDistinct is the validation function for validating an attribute is unique among other values.
+func isDistinct(v reflect.Value) (bool, error) {
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
@@ -1175,15 +831,15 @@ func validateDistinct(v reflect.Value) (bool, error) {
 	return false, fmt.Errorf("validator: Distinct unsupported type %T", v.Interface())
 }
 
-// ValidateDistinct is the validation function for validating an attribute is unique among other values.
-func ValidateDistinct(i interface{}) bool {
+// IsDistinct is the validation function for validating an attribute is unique among other values.
+func IsDistinct(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	valid, _ := validateDistinct(v)
+	valid, _ := isDistinct(v)
 	return valid
 }
 
-// validateMultipleOf is the validation function for validating if the current field's value is a multiple of the param's value.
-func validateMultipleOf(v reflect.Value, params []string) (bool, error) {
+// isMultipleOf is the validation function for validating if the current field's value is a multiple of the param's value.
+func isMultipleOf(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: multipleOf rule requires at least one parameter")
 	}
@@ -1234,14 +890,14 @@ func validateMultipleOf(v reflect.Value, params []string) (bool, error) {
 	}
 }
 
-// ValidateMultipleOf is the validation function for validating if a value is a multiple of another.
-func ValidateMultipleOf(i interface{}, params []string) (bool, error) {
+// IsMultipleOf is the validation function for validating if a value is a multiple of another.
+func IsMultipleOf(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateMultipleOf(v, params)
+	return isMultipleOf(v, params)
 }
 
-// validateMaxDigits is the validation function for validating the maximum number of digits.
-func validateMaxDigits(v reflect.Value, params []string) (bool, error) {
+// isMaxDigits is the validation function for validating the maximum number of digits.
+func isMaxDigits(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: maxDigits rule requires at least one parameter")
 	}
@@ -1272,14 +928,14 @@ func validateMaxDigits(v reflect.Value, params []string) (bool, error) {
 	return int64(len(numStr)) <= maxDigits, nil
 }
 
-// ValidateMaxDigits is the validation function for validating the maximum number of digits.
-func ValidateMaxDigits(i interface{}, params []string) (bool, error) {
+// IsMaxDigits is the validation function for validating the maximum number of digits.
+func IsMaxDigits(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateMaxDigits(v, params)
+	return isMaxDigits(v, params)
 }
 
-// validateMinDigits is the validation function for validating the minimum number of digits.
-func validateMinDigits(v reflect.Value, params []string) (bool, error) {
+// isMinDigits is the validation function for validating the minimum number of digits.
+func isMinDigits(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: minDigits rule requires at least one parameter")
 	}
@@ -1310,15 +966,15 @@ func validateMinDigits(v reflect.Value, params []string) (bool, error) {
 	return int64(len(numStr)) >= minDigits, nil
 }
 
-// ValidateMinDigits is the validation function for validating the minimum number of digits.
-func ValidateMinDigits(i interface{}, params []string) (bool, error) {
+// IsMinDigits is the validation function for validating the minimum number of digits.
+func IsMinDigits(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateMinDigits(v, params)
+	return isMinDigits(v, params)
 }
 
-// validateDecimalPrecision is the validation function for validating decimal places.
+// isDecimalPrecision is the validation function for validating decimal places.
 // params[0] is min decimal places, params[1] (optional) is max decimal places.
-func validateDecimalPrecision(v reflect.Value, params []string) (bool, error) {
+func isDecimalPrecision(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: decimal rule requires at least one parameter")
 	}
@@ -1357,14 +1013,14 @@ func validateDecimalPrecision(v reflect.Value, params []string) (bool, error) {
 	return decimalPlaces >= minPlaces && decimalPlaces <= maxPlaces, nil
 }
 
-// ValidateDecimalPrecision is the validation function for validating decimal places.
-func ValidateDecimalPrecision(i interface{}, params []string) (bool, error) {
+// IsDecimalPrecision is the validation function for validating decimal places.
+func IsDecimalPrecision(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateDecimalPrecision(v, params)
+	return isDecimalPrecision(v, params)
 }
 
-// validateContains is the validation function for validating a string/array/slice contains specified values.
-func validateContains(v reflect.Value, params []string) (bool, error) {
+// isContains is the validation function for validating a string/array/slice contains specified values.
+func isContains(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: contains rule requires at least one parameter")
 	}
@@ -1401,14 +1057,14 @@ func validateContains(v reflect.Value, params []string) (bool, error) {
 	}
 }
 
-// ValidateContains is the validation function for validating an array/slice contains specified values.
-func ValidateContains(i interface{}, params []string) (bool, error) {
+// IsContains is the validation function for validating an array/slice contains specified values.
+func IsContains(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateContains(v, params)
+	return isContains(v, params)
 }
 
-// validateDoesntContain is the validation function for validating a string/array/slice does not contain specified values.
-func validateDoesntContain(v reflect.Value, params []string) (bool, error) {
+// isDoesntContain is the validation function for validating a string/array/slice does not contain specified values.
+func isDoesntContain(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: doesntContain rule requires at least one parameter")
 	}
@@ -1440,14 +1096,14 @@ func validateDoesntContain(v reflect.Value, params []string) (bool, error) {
 	}
 }
 
-// ValidateDoesntContain is the validation function for validating an array/slice does not contain specified values.
-func ValidateDoesntContain(i interface{}, params []string) (bool, error) {
+// IsDoesntContain is the validation function for validating an array/slice does not contain specified values.
+func IsDoesntContain(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateDoesntContain(v, params)
+	return isDoesntContain(v, params)
 }
 
-// ValidateMimeTypes is the validation function for the file must match one of the given MIME types.
-func ValidateMimeTypes(data []byte, mimeTypes []string) bool {
+// IsMimeTypes is the validation function for the file must match one of the given MIME types.
+func IsMimeTypes(data []byte, mimeTypes []string) bool {
 	mimeType := http.DetectContentType(data)
 	for _, value := range mimeTypes {
 		if mimeType == value {
@@ -1457,8 +1113,8 @@ func ValidateMimeTypes(data []byte, mimeTypes []string) bool {
 	return false
 }
 
-// ValidateMimes is the validation function for the file must have a MIME type corresponding to one of the listed extensions.
-func ValidateMimes(data []byte, mimes []string) (bool, error) {
+// IsMimes is the validation function for the file must have a MIME type corresponding to one of the listed extensions.
+func IsMimes(data []byte, mimes []string) (bool, error) {
 	mimeTypes := make([]string, len(mimes))
 	for i, mime := range mimes {
 		if val, ok := Mimes[mime]; ok {
@@ -1471,8 +1127,8 @@ func ValidateMimes(data []byte, mimes []string) (bool, error) {
 	return ValidateMimeTypes(data, mimeTypes), nil
 }
 
-// ValidateImage is the validation function for the The file under validation must be an image (jpeg, png, bmp, gif, or svg)
-func ValidateImage(data []byte) bool {
+// IsImage is the validation function for the The file under validation must be an image (jpeg, png, bmp, gif, or svg)
+func IsImage(data []byte) bool {
 	v, err := ValidateMimes(data, []string{"jpeg", "png", "gif", "bmp", "svg"})
 	if err != nil {
 		return false
@@ -1680,9 +1336,20 @@ func Empty(v reflect.Value) bool {
 		return v.Float() == 0
 	case reflect.Interface, reflect.Ptr:
 		return v.IsNil()
+	case reflect.Chan, reflect.Func:
+		return v.IsNil()
+	case reflect.Struct:
+		// Use IsZero() for structs - much faster than DeepEqual
+		// Available since Go 1.13
+		return v.IsZero()
+	case reflect.Complex64, reflect.Complex128:
+		return v.Complex() == 0
+	case reflect.Invalid:
+		return true
 	}
 
-	return reflect.DeepEqual(v.Interface(), reflect.Zero(v.Type()).Interface())
+	// For any other type (should be rare), use IsZero
+	return v.IsZero()
 }
 
 // Error returns string equivalent for reflect.Type
@@ -1695,15 +1362,15 @@ func (sv stringValues) Swap(i, j int)      { sv[i], sv[j] = sv[j], sv[i] }
 func (sv stringValues) Less(i, j int) bool { return sv.get(i) < sv.get(j) }
 func (sv stringValues) get(i int) string   { return sv[i].String() }
 
-// validateRequired check value required when anotherField str is a member of the set of strings params
-func validateRequired(v reflect.Value) bool {
+// isRequired check value required when anotherField str is a member of the set of strings params
+func isRequired(v reflect.Value) bool {
 	return !Empty(v)
 }
 
-// ValidateRequired check value required when anotherField str is a member of the set of strings params
-func ValidateRequired(i interface{}) bool {
+// IsRequired check value required when anotherField str is a member of the set of strings params
+func IsRequired(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validateRequired(v)
+	return isRequired(v)
 }
 
 // acceptedValues are the values that are considered "accepted"
@@ -1712,8 +1379,8 @@ var acceptedValues = []string{"yes", "on", "1", "true"}
 // declinedValues are the values that are considered "declined"
 var declinedValues = []string{"no", "off", "0", "false"}
 
-// validateAccepted checks if the field is accepted (yes, on, 1, "1", true, "true")
-func validateAccepted(v reflect.Value) bool {
+// isAccepted checks if the field is accepted (yes, on, 1, "1", true, "true")
+func isAccepted(v reflect.Value) bool {
 	if v.Kind() == reflect.Bool {
 		return v.Bool()
 	}
@@ -1721,14 +1388,14 @@ func validateAccepted(v reflect.Value) bool {
 	return InString(value, acceptedValues)
 }
 
-// ValidateAccepted checks if the field is accepted
-func ValidateAccepted(i interface{}) bool {
+// IsAccepted checks if the field is accepted
+func IsAccepted(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validateAccepted(v)
+	return isAccepted(v)
 }
 
-// validateDeclined checks if the field is declined (no, off, 0, "0", false, "false")
-func validateDeclined(v reflect.Value) bool {
+// isDeclined checks if the field is declined (no, off, 0, "0", false, "false")
+func isDeclined(v reflect.Value) bool {
 	if v.Kind() == reflect.Bool {
 		return !v.Bool()
 	}
@@ -1736,25 +1403,25 @@ func validateDeclined(v reflect.Value) bool {
 	return InString(value, declinedValues)
 }
 
-// ValidateDeclined checks if the field is declined
-func ValidateDeclined(i interface{}) bool {
+// IsDeclined checks if the field is declined
+func IsDeclined(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validateDeclined(v)
+	return isDeclined(v)
 }
 
-// validateProhibited checks if the field is empty (prohibited means it must be empty)
-func validateProhibited(v reflect.Value) bool {
+// isProhibited checks if the field is empty (prohibited means it must be empty)
+func isProhibited(v reflect.Value) bool {
 	return Empty(v)
 }
 
-// ValidateProhibited checks if the field is prohibited (must be empty)
-func ValidateProhibited(i interface{}) bool {
+// IsProhibited checks if the field is prohibited (must be empty)
+func IsProhibited(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validateProhibited(v)
+	return isProhibited(v)
 }
 
-// validateAcceptedIf checks if the field is accepted when another field equals a specific value
-func validateAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) {
+// isAcceptedIf checks if the field is accepted when another field equals a specific value
+func isAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1765,13 +1432,13 @@ func validateAcceptedIf(v, anotherField reflect.Value, params []string) (bool, e
 
 	value := ToString(anotherField.Interface())
 	if InString(value, params) {
-		return validateAccepted(v), nil
+		return isAccepted(v), nil
 	}
 	return true, nil
 }
 
-// validateDeclinedIf checks if the field is declined when another field equals a specific value
-func validateDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) {
+// isDeclinedIf checks if the field is declined when another field equals a specific value
+func isDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1782,13 +1449,13 @@ func validateDeclinedIf(v, anotherField reflect.Value, params []string) (bool, e
 
 	value := ToString(anotherField.Interface())
 	if InString(value, params) {
-		return validateDeclined(v), nil
+		return isDeclined(v), nil
 	}
 	return true, nil
 }
 
-// validateProhibitedIf checks if the field is empty when another field equals a specific value
-func validateProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error) {
+// isProhibitedIf checks if the field is empty when another field equals a specific value
+func isProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1799,13 +1466,13 @@ func validateProhibitedIf(v, anotherField reflect.Value, params []string) (bool,
 
 	value := ToString(anotherField.Interface())
 	if InString(value, params) {
-		return validateProhibited(v), nil
+		return isProhibited(v), nil
 	}
 	return true, nil
 }
 
-// validateProhibitedUnless checks if the field is empty unless another field equals a specific value
-func validateProhibitedUnless(v, anotherField reflect.Value, params []string) (bool, error) {
+// isProhibitedUnless checks if the field is empty unless another field equals a specific value
+func isProhibitedUnless(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1816,24 +1483,24 @@ func validateProhibitedUnless(v, anotherField reflect.Value, params []string) (b
 
 	value := ToString(anotherField.Interface())
 	if !InString(value, params) {
-		return validateProhibited(v), nil
+		return isProhibited(v), nil
 	}
 	return true, nil
 }
 
-// validateMissing checks if the field is not present (must be absent from the data)
-func validateMissing(v reflect.Value) bool {
+// isMissing checks if the field is not present (must be absent from the data)
+func isMissing(v reflect.Value) bool {
 	return !v.IsValid() || Empty(v)
 }
 
-// ValidateMissing checks if the field is missing
-func ValidateMissing(i interface{}) bool {
+// IsMissing checks if the field is missing
+func IsMissing(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validateMissing(v)
+	return isMissing(v)
 }
 
-// validateMissingIf checks if the field is missing when another field equals a specific value
-func validateMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
+// isMissingIf checks if the field is missing when another field equals a specific value
+func isMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1844,13 +1511,13 @@ func validateMissingIf(v, anotherField reflect.Value, params []string) (bool, er
 
 	value := ToString(anotherField.Interface())
 	if InString(value, params) {
-		return validateMissing(v), nil
+		return isMissing(v), nil
 	}
 	return true, nil
 }
 
-// validateMissingUnless checks if the field is missing unless another field equals a specific value
-func validateMissingUnless(v, anotherField reflect.Value, params []string) (bool, error) {
+// isMissingUnless checks if the field is missing unless another field equals a specific value
+func isMissingUnless(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1861,45 +1528,45 @@ func validateMissingUnless(v, anotherField reflect.Value, params []string) (bool
 
 	value := ToString(anotherField.Interface())
 	if !InString(value, params) {
-		return validateMissing(v), nil
+		return isMissing(v), nil
 	}
 	return true, nil
 }
 
-// validateRequiredIfAccepted checks if the field is required when another field is accepted
-func validateRequiredIfAccepted(v, anotherField reflect.Value) (bool, error) {
-	if validateAccepted(anotherField) {
-		return validateRequired(v), nil
+// isRequiredIfAccepted checks if the field is required when another field is accepted
+func isRequiredIfAccepted(v, anotherField reflect.Value) (bool, error) {
+	if isAccepted(anotherField) {
+		return isRequired(v), nil
 	}
 	return true, nil
 }
 
-// validateRequiredIfDeclined checks if the field is required when another field is declined
-func validateRequiredIfDeclined(v, anotherField reflect.Value) (bool, error) {
-	if validateDeclined(anotherField) {
-		return validateRequired(v), nil
+// isRequiredIfDeclined checks if the field is required when another field is declined
+func isRequiredIfDeclined(v, anotherField reflect.Value) (bool, error) {
+	if isDeclined(anotherField) {
+		return isRequired(v), nil
 	}
 	return true, nil
 }
 
-// validateProhibitedIfAccepted checks if the field is prohibited when another field is accepted
-func validateProhibitedIfAccepted(v, anotherField reflect.Value) (bool, error) {
-	if validateAccepted(anotherField) {
-		return validateProhibited(v), nil
+// isProhibitedIfAccepted checks if the field is prohibited when another field is accepted
+func isProhibitedIfAccepted(v, anotherField reflect.Value) (bool, error) {
+	if isAccepted(anotherField) {
+		return isProhibited(v), nil
 	}
 	return true, nil
 }
 
-// validateProhibitedIfDeclined checks if the field is prohibited when another field is declined
-func validateProhibitedIfDeclined(v, anotherField reflect.Value) (bool, error) {
-	if validateDeclined(anotherField) {
-		return validateProhibited(v), nil
+// isProhibitedIfDeclined checks if the field is prohibited when another field is declined
+func isProhibitedIfDeclined(v, anotherField reflect.Value) (bool, error) {
+	if isDeclined(anotherField) {
+		return isProhibited(v), nil
 	}
 	return true, nil
 }
 
-// validateProhibits checks if when this field has a value, the other specified fields must be empty
-func validateProhibits(v reflect.Value, otherFields []string, obj reflect.Value) bool {
+// isProhibits checks if when this field has a value, the other specified fields must be empty
+func isProhibits(v reflect.Value, otherFields []string, obj reflect.Value) bool {
 	if Empty(v) {
 		return true
 	}
@@ -1915,22 +1582,22 @@ func validateProhibits(v reflect.Value, otherFields []string, obj reflect.Value)
 	return true
 }
 
-// validateMissingWith checks if the field is missing when any of the specified fields are present
-func validateMissingWith(v reflect.Value, otherFields []string, obj reflect.Value) bool {
+// isMissingWith checks if the field is missing when any of the specified fields are present
+func isMissingWith(v reflect.Value, otherFields []string, obj reflect.Value) bool {
 	for _, fieldName := range otherFields {
 		otherField, err := findField(fieldName, obj)
 		if err != nil {
 			continue
 		}
 		if !Empty(otherField) {
-			return validateMissing(v)
+			return isMissing(v)
 		}
 	}
 	return true
 }
 
-// validateMissingWithAll checks if the field is missing when all of the specified fields are present
-func validateMissingWithAll(v reflect.Value, otherFields []string, obj reflect.Value) bool {
+// isMissingWithAll checks if the field is missing when all of the specified fields are present
+func isMissingWithAll(v reflect.Value, otherFields []string, obj reflect.Value) bool {
 	allPresent := true
 	for _, fieldName := range otherFields {
 		otherField, err := findField(fieldName, obj)
@@ -1944,26 +1611,26 @@ func validateMissingWithAll(v reflect.Value, otherFields []string, obj reflect.V
 		}
 	}
 	if allPresent {
-		return validateMissing(v)
+		return isMissing(v)
 	}
 	return true
 }
 
-// validatePresent checks if the field is present (for struct fields, always true since they exist)
-func validatePresent(v reflect.Value) bool {
+// isPresent checks if the field is present (for struct fields, always true since they exist)
+func isPresent(v reflect.Value) bool {
 	// In a struct context, all fields are always "present" - they exist in the struct
 	// This is different from "required" which checks for non-empty values
 	return v.IsValid()
 }
 
-// ValidatePresent checks if the field is present
-func ValidatePresent(i interface{}) bool {
+// IsPresent checks if the field is present
+func IsPresent(i interface{}) bool {
 	v := reflect.ValueOf(i)
-	return validatePresent(v)
+	return isPresent(v)
 }
 
-// validatePresentIf checks if the field is present (non-empty) when another field equals a specific value
-func validatePresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
+// isPresentIf checks if the field is present (non-empty) when another field equals a specific value
+func isPresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1979,8 +1646,8 @@ func validatePresentIf(v, anotherField reflect.Value, params []string) (bool, er
 	return true, nil
 }
 
-// validatePresentUnless checks if the field is present (non-empty) unless another field equals a specific value
-func validatePresentUnless(v, anotherField reflect.Value, params []string) (bool, error) {
+// isPresentUnless checks if the field is present (non-empty) unless another field equals a specific value
+func isPresentUnless(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -1996,8 +1663,8 @@ func validatePresentUnless(v, anotherField reflect.Value, params []string) (bool
 	return true, nil
 }
 
-// validatePresentWith checks if the field is present (non-empty) when any of the specified fields are present
-func validatePresentWith(v reflect.Value, otherFields []string, obj reflect.Value) bool {
+// isPresentWith checks if the field is present (non-empty) when any of the specified fields are present
+func isPresentWith(v reflect.Value, otherFields []string, obj reflect.Value) bool {
 	for _, fieldName := range otherFields {
 		otherField, err := findField(fieldName, obj)
 		if err != nil {
@@ -2010,8 +1677,8 @@ func validatePresentWith(v reflect.Value, otherFields []string, obj reflect.Valu
 	return true
 }
 
-// validatePresentWithAll checks if the field is present (non-empty) when all of the specified fields are present
-func validatePresentWithAll(v reflect.Value, otherFields []string, obj reflect.Value) bool {
+// isPresentWithAll checks if the field is present (non-empty) when all of the specified fields are present
+func isPresentWithAll(v reflect.Value, otherFields []string, obj reflect.Value) bool {
 	allPresent := true
 	for _, fieldName := range otherFields {
 		otherField, err := findField(fieldName, obj)
@@ -2030,8 +1697,8 @@ func validatePresentWithAll(v reflect.Value, otherFields []string, obj reflect.V
 	return true
 }
 
-// validateRequiredArrayKeys checks if the array has all the specified keys
-func validateRequiredArrayKeys(v reflect.Value, keys []string) (bool, error) {
+// isRequiredArrayKeys checks if the array has all the specified keys
+func isRequiredArrayKeys(v reflect.Value, keys []string) (bool, error) {
 	if v.Kind() != reflect.Map {
 		return false, fmt.Errorf("validator: requiredArrayKeys only supports map types")
 	}
@@ -2051,15 +1718,15 @@ func validateRequiredArrayKeys(v reflect.Value, keys []string) (bool, error) {
 	return true, nil
 }
 
-// ValidateRequiredArrayKeys checks if the map has all the specified keys
-func ValidateRequiredArrayKeys(i interface{}, keys []string) (bool, error) {
+// IsRequiredArrayKeys checks if the map has all the specified keys
+func IsRequiredArrayKeys(i interface{}, keys []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateRequiredArrayKeys(v, keys)
+	return isRequiredArrayKeys(v, keys)
 }
 
-// validateList checks if the slice/array is a valid list (sequential integer keys starting from 0)
+// isList checks if the slice/array is a valid list (sequential integer keys starting from 0)
 // In Go, slices are always lists, so this just checks if it's a slice/array
-func validateList(v reflect.Value) (bool, error) {
+func isList(v reflect.Value) (bool, error) {
 	switch v.Kind() {
 	case reflect.Slice, reflect.Array:
 		return true, nil
@@ -2068,10 +1735,10 @@ func validateList(v reflect.Value) (bool, error) {
 	}
 }
 
-// ValidateList checks if the value is a list (slice or array)
-func ValidateList(i interface{}) (bool, error) {
+// IsList checks if the value is a list (slice or array)
+func IsList(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateList(v)
+	return isList(v)
 }
 
 // Common date formats to try when parsing
@@ -2101,9 +1768,7 @@ func parseDate(dateStr string) (time.Time, error) {
 
 // getTimeValue extracts a time.Time from a reflect.Value
 func getTimeValue(v reflect.Value) (time.Time, bool) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() {
 		return time.Time{}, false
 	}
@@ -2127,11 +1792,9 @@ func getTimeValue(v reflect.Value) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// validateDate checks if the value is a valid date
-func validateDate(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isDate checks if the value is a valid date
+func isDate(v reflect.Value) (bool, error) {
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2140,21 +1803,19 @@ func validateDate(v reflect.Value) (bool, error) {
 	return ok, nil
 }
 
-// ValidateDate checks if the value is a valid date
-func ValidateDate(i interface{}) (bool, error) {
+// IsDate checks if the value is a valid date
+func IsDate(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateDate(v)
+	return isDate(v)
 }
 
-// validateDateFormat checks if the value matches the given date format
-func validateDateFormat(v reflect.Value, params []string) (bool, error) {
+// isDateFormat checks if the value matches the given date format
+func isDateFormat(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: dateFormat rule requires a format parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2176,21 +1837,19 @@ func validateDateFormat(v reflect.Value, params []string) (bool, error) {
 	return err == nil, nil
 }
 
-// ValidateDateFormat checks if the value matches the given date format
-func ValidateDateFormat(i interface{}, params []string) (bool, error) {
+// IsDateFormat checks if the value matches the given date format
+func IsDateFormat(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateDateFormat(v, params)
+	return isDateFormat(v, params)
 }
 
-// validateAfter checks if the date is after the given date
-func validateAfter(v reflect.Value, params []string) (bool, error) {
+// isAfter checks if the date is after the given date
+func isAfter(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: after rule requires a date parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2209,21 +1868,19 @@ func validateAfter(v reflect.Value, params []string) (bool, error) {
 	return currentTime.After(compareTime), nil
 }
 
-// ValidateAfter checks if the date is after the given date
-func ValidateAfter(i interface{}, params []string) (bool, error) {
+// IsAfter checks if the date is after the given date
+func IsAfter(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateAfter(v, params)
+	return isAfter(v, params)
 }
 
-// validateAfterOrEqual checks if the date is after or equal to the given date
-func validateAfterOrEqual(v reflect.Value, params []string) (bool, error) {
+// isAfterOrEqual checks if the date is after or equal to the given date
+func isAfterOrEqual(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: afterOrEqual rule requires a date parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2242,21 +1899,19 @@ func validateAfterOrEqual(v reflect.Value, params []string) (bool, error) {
 	return currentTime.After(compareTime) || currentTime.Equal(compareTime), nil
 }
 
-// ValidateAfterOrEqual checks if the date is after or equal to the given date
-func ValidateAfterOrEqual(i interface{}, params []string) (bool, error) {
+// IsAfterOrEqual checks if the date is after or equal to the given date
+func IsAfterOrEqual(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateAfterOrEqual(v, params)
+	return isAfterOrEqual(v, params)
 }
 
-// validateBefore checks if the date is before the given date
-func validateBefore(v reflect.Value, params []string) (bool, error) {
+// isBefore checks if the date is before the given date
+func isBefore(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: before rule requires a date parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2275,21 +1930,19 @@ func validateBefore(v reflect.Value, params []string) (bool, error) {
 	return currentTime.Before(compareTime), nil
 }
 
-// ValidateBefore checks if the date is before the given date
-func ValidateBefore(i interface{}, params []string) (bool, error) {
+// IsBefore checks if the date is before the given date
+func IsBefore(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateBefore(v, params)
+	return isBefore(v, params)
 }
 
-// validateBeforeOrEqual checks if the date is before or equal to the given date
-func validateBeforeOrEqual(v reflect.Value, params []string) (bool, error) {
+// isBeforeOrEqual checks if the date is before or equal to the given date
+func isBeforeOrEqual(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: beforeOrEqual rule requires a date parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2308,21 +1961,19 @@ func validateBeforeOrEqual(v reflect.Value, params []string) (bool, error) {
 	return currentTime.Before(compareTime) || currentTime.Equal(compareTime), nil
 }
 
-// ValidateBeforeOrEqual checks if the date is before or equal to the given date
-func ValidateBeforeOrEqual(i interface{}, params []string) (bool, error) {
+// IsBeforeOrEqual checks if the date is before or equal to the given date
+func IsBeforeOrEqual(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateBeforeOrEqual(v, params)
+	return isBeforeOrEqual(v, params)
 }
 
-// validateIn checks if the value is in the given list
-func validateIn(v reflect.Value, params []string) (bool, error) {
+// isIn checks if the value is in the given list
+func isIn(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: in rule requires at least one parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2331,21 +1982,19 @@ func validateIn(v reflect.Value, params []string) (bool, error) {
 	return InString(value, params), nil
 }
 
-// ValidateIn checks if the value is in the given list
-func ValidateIn(i interface{}, params []string) (bool, error) {
+// IsIn checks if the value is in the given list
+func IsIn(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateIn(v, params)
+	return isIn(v, params)
 }
 
-// validateNotIn checks if the value is not in the given list
-func validateNotIn(v reflect.Value, params []string) (bool, error) {
+// isNotIn checks if the value is not in the given list
+func isNotIn(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: notIn rule requires at least one parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2354,17 +2003,15 @@ func validateNotIn(v reflect.Value, params []string) (bool, error) {
 	return !InString(value, params), nil
 }
 
-// ValidateNotIn checks if the value is not in the given list
-func ValidateNotIn(i interface{}, params []string) (bool, error) {
+// IsNotIn checks if the value is not in the given list
+func IsNotIn(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateNotIn(v, params)
+	return isNotIn(v, params)
 }
 
-// validateDifferent checks if the value is different from another field
-func validateDifferent(v, anotherField reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isDifferent checks if the value is different from another field
+func isDifferent(v, anotherField reflect.Value) (bool, error) {
+	v = deref(v)
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -2376,17 +2023,15 @@ func validateDifferent(v, anotherField reflect.Value) (bool, error) {
 	return ToString(v.Interface()) != ToString(anotherField.Interface()), nil
 }
 
-// ValidateDifferent checks if the value is different from another value
-func ValidateDifferent(a, b interface{}) (bool, error) {
-	return validateDifferent(reflect.ValueOf(a), reflect.ValueOf(b))
+// IsDifferent checks if the value is different from another value
+func IsDifferent(a, b interface{}) (bool, error) {
+	return isDifferent(reflect.ValueOf(a), reflect.ValueOf(b))
 }
 
-// validateConfirmed checks if the field has a matching confirmation field
+// isConfirmed checks if the field has a matching confirmation field
 // This is handled specially in the validation loop since it needs to find {field}_confirmation
-func validateConfirmed(v, confirmationField reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+func isConfirmed(v, confirmationField reflect.Value) (bool, error) {
+	v = deref(v)
 	if confirmationField.Kind() == reflect.Interface || confirmationField.Kind() == reflect.Ptr {
 		confirmationField = confirmationField.Elem()
 	}
@@ -2402,11 +2047,9 @@ func validateConfirmed(v, confirmationField reflect.Value) (bool, error) {
 	return ToString(v.Interface()) == ToString(confirmationField.Interface()), nil
 }
 
-// validateJSON checks if the value is a valid JSON string
-func validateJSON(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isJSON checks if the value is a valid JSON string
+func isJSON(v reflect.Value) (bool, error) {
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2419,21 +2062,19 @@ func validateJSON(v reflect.Value) (bool, error) {
 	return json.Unmarshal([]byte(v.String()), &js) == nil, nil
 }
 
-// ValidateJSON checks if the value is a valid JSON string
-func ValidateJSON(i interface{}) (bool, error) {
+// IsJSON checks if the value is a valid JSON string
+func IsJSON(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateJSON(v)
+	return isJSON(v)
 }
 
-// validateRegex checks if the value matches the given regex pattern
-func validateRegex(v reflect.Value, params []string) (bool, error) {
+// isRegex checks if the value matches the given regex pattern
+func isRegex(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: regex rule requires a pattern parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2451,21 +2092,19 @@ func validateRegex(v reflect.Value, params []string) (bool, error) {
 	return re.MatchString(v.String()), nil
 }
 
-// ValidateRegex checks if the value matches the given regex pattern
-func ValidateRegex(i interface{}, params []string) (bool, error) {
+// IsRegex checks if the value matches the given regex pattern
+func IsRegex(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateRegex(v, params)
+	return isRegex(v, params)
 }
 
-// validateNotRegex checks if the value does not match the given regex pattern
-func validateNotRegex(v reflect.Value, params []string) (bool, error) {
+// isNotRegex checks if the value does not match the given regex pattern
+func isNotRegex(v reflect.Value, params []string) (bool, error) {
 	if len(params) == 0 {
 		return false, fmt.Errorf("validator: notRegex rule requires a pattern parameter")
 	}
 
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2483,17 +2122,15 @@ func validateNotRegex(v reflect.Value, params []string) (bool, error) {
 	return !re.MatchString(v.String()), nil
 }
 
-// ValidateNotRegex checks if the value does not match the given regex pattern
-func ValidateNotRegex(i interface{}, params []string) (bool, error) {
+// IsNotRegex checks if the value does not match the given regex pattern
+func IsNotRegex(i interface{}, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateNotRegex(v, params)
+	return isNotRegex(v, params)
 }
 
-// validateBoolean checks if the value is boolean-like (true/false, 1/0, "yes"/"no", "on"/"off")
-func validateBoolean(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isBoolean checks if the value is boolean-like (true/false, 1/0, "yes"/"no", "on"/"off")
+func isBoolean(v reflect.Value) (bool, error) {
+	v = deref(v)
 	if !v.IsValid() || Empty(v) {
 		return true, nil
 	}
@@ -2516,17 +2153,15 @@ func validateBoolean(v reflect.Value) (bool, error) {
 	return false, nil
 }
 
-// ValidateBoolean checks if the value is boolean-like
-func ValidateBoolean(i interface{}) (bool, error) {
+// IsBoolean checks if the value is boolean-like
+func IsBoolean(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateBoolean(v)
+	return isBoolean(v)
 }
 
-// validateString checks if the value is a string
-func validateString(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isString checks if the value is a string
+func isString(v reflect.Value) (bool, error) {
+	v = deref(v)
 	if !v.IsValid() {
 		return true, nil
 	}
@@ -2534,17 +2169,15 @@ func validateString(v reflect.Value) (bool, error) {
 	return v.Kind() == reflect.String, nil
 }
 
-// ValidateString checks if the value is a string
-func ValidateString(i interface{}) (bool, error) {
+// IsString checks if the value is a string
+func IsString(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateString(v)
+	return isString(v)
 }
 
-// validateArray checks if the value is an array or slice
-func validateArray(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isArray checks if the value is an array or slice
+func isArray(v reflect.Value) (bool, error) {
+	v = deref(v)
 	if !v.IsValid() {
 		return true, nil
 	}
@@ -2552,17 +2185,15 @@ func validateArray(v reflect.Value) (bool, error) {
 	return v.Kind() == reflect.Slice || v.Kind() == reflect.Array, nil
 }
 
-// ValidateArray checks if the value is an array or slice
-func ValidateArray(i interface{}) (bool, error) {
+// IsArray checks if the value is an array or slice
+func IsArray(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateArray(v)
+	return isArray(v)
 }
 
-// validateFilled checks if the field is not empty when it is present
-func validateFilled(v reflect.Value) (bool, error) {
-	if v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
+// isFilled checks if the field is not empty when it is present
+func isFilled(v reflect.Value) (bool, error) {
+	v = deref(v)
 	// If the field is not valid (doesn't exist), it passes
 	if !v.IsValid() {
 		return true, nil
@@ -2571,14 +2202,14 @@ func validateFilled(v reflect.Value) (bool, error) {
 	return !Empty(v), nil
 }
 
-// ValidateFilled checks if the field is not empty when present
-func ValidateFilled(i interface{}) (bool, error) {
+// IsFilled checks if the field is not empty when present
+func IsFilled(i interface{}) (bool, error) {
 	v := reflect.ValueOf(i)
-	return validateFilled(v)
+	return isFilled(v)
 }
 
-// validateRequiredIf check value required when anotherField str is a member of the set of strings params
-func validateRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag) (bool, error) {
+// isRequiredIf check value required when anotherField str is a member of the set of strings params
+func isRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -2617,8 +2248,8 @@ func validateRequiredIf(v, anotherField reflect.Value, params []string, tag *Val
 	return true, nil
 }
 
-// validateRequiredUnless check value required when anotherField str is a member of the set of strings params
-func validateRequiredUnless(v, anotherField reflect.Value, params []string) (bool, error) {
+// isRequiredUnless check value required when anotherField str is a member of the set of strings params
+func isRequiredUnless(v, anotherField reflect.Value, params []string) (bool, error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
@@ -2693,14 +2324,14 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 		var isValid bool
 		switch tag.name {
 		case "required":
-			isError = !validateRequired(value)
+			isError = !isRequired(value)
 		case "requiredIf":
 			if len(tag.params) == 0 {
 				continue
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil && len(tag.params) >= 2 {
-				isValid, funcError = validateRequiredIf(value, anotherField, tag.params[1:], tag)
+				isValid, funcError = isRequiredIf(value, anotherField, tag.params[1:], tag)
 				if !isValid {
 					isError = true
 				}
@@ -2711,25 +2342,25 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil && len(tag.params) >= 2 {
-				isValid, funcError = validateRequiredUnless(value, anotherField, tag.params[1:])
+				isValid, funcError = isRequiredUnless(value, anotherField, tag.params[1:])
 				if !isValid {
 					isError = true
 				}
 			}
 		case "requiredWith":
-			if !validateRequiredWith(tag.params, value, o) {
+			if !isRequiredWith(tag.params, value, o) {
 				isError = true
 			}
 		case "requiredWithAll":
-			if !validateRequiredWithAll(tag.params, value, o) {
+			if !isRequiredWithAll(tag.params, value, o) {
 				isError = true
 			}
 		case "requiredWithout":
-			if !validateRequiredWithout(tag.params, value, o) {
+			if !isRequiredWithout(tag.params, value, o) {
 				isError = true
 			}
 		case "requiredWithoutAll":
-			if !validateRequiredWithoutAll(tag.params, value, o) {
+			if !isRequiredWithoutAll(tag.params, value, o) {
 				isError = true
 			}
 		case "requiredIfAccepted":
@@ -2738,7 +2369,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil {
-				isValid, funcError = validateRequiredIfAccepted(value, anotherField)
+				isValid, funcError = isRequiredIfAccepted(value, anotherField)
 				if !isValid {
 					isError = true
 				}
@@ -2749,7 +2380,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil {
-				isValid, funcError = validateRequiredIfDeclined(value, anotherField)
+				isValid, funcError = isRequiredIfDeclined(value, anotherField)
 				if !isValid {
 					isError = true
 				}
@@ -2774,34 +2405,34 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 	return nil
 }
 
-// validateRequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
-func validateRequiredWith(otherFields []string, currentField, obj reflect.Value) bool {
+// isRequiredWith The field under validation must be present and not empty only if any of the other specified fields are present.
+func isRequiredWith(otherFields []string, currentField, obj reflect.Value) bool {
 	if !allFailingRequired(otherFields, obj) {
-		return validateRequired(currentField)
+		return isRequired(currentField)
 	}
 	return true
 }
 
-// validateRequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
-func validateRequiredWithAll(otherFields []string, currentField, obj reflect.Value) bool {
+// isRequiredWithAll The field under validation must be present and not empty only if all of the other specified fields are present.
+func isRequiredWithAll(otherFields []string, currentField, obj reflect.Value) bool {
 	if !anyFailingRequired(otherFields, obj) {
-		return validateRequired(currentField)
+		return isRequired(currentField)
 	}
 	return true
 }
 
 // RequiredWithout The field under validation must be present and not empty only when any of the other specified fields are not present.
-func validateRequiredWithout(otherFields []string, currentField, obj reflect.Value) bool {
+func isRequiredWithout(otherFields []string, currentField, obj reflect.Value) bool {
 	if anyFailingRequired(otherFields, obj) {
-		return validateRequired(currentField)
+		return isRequired(currentField)
 	}
 	return true
 }
 
-// validateRequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
-func validateRequiredWithoutAll(otherFields []string, currentField, obj reflect.Value) bool {
+// isRequiredWithoutAll The field under validation must be present and not empty only when all of the other specified fields are not present.
+func isRequiredWithoutAll(otherFields []string, currentField, obj reflect.Value) bool {
 	if allFailingRequired(otherFields, obj) {
-		return validateRequired(currentField)
+		return isRequired(currentField)
 	}
 	return true
 }
@@ -2975,80 +2606,80 @@ func (v *Validator) checkDependentRulesWithStatus(validTag *ValidTag, f *field, 
 	case "gt":
 		// Only handle field comparison, parameter comparison is handled by ParamRuleMap
 		if anotherField.IsValid() {
-			isValid, funcError = validateGt(value, anotherField)
+			isValid, funcError = isGt(value, anotherField)
 		} else {
 			return false, nil // Let ParamRuleMap handle it
 		}
 	case "gte":
 		if anotherField.IsValid() {
-			isValid, funcError = validateGte(value, anotherField)
+			isValid, funcError = isGte(value, anotherField)
 		} else {
 			return false, nil
 		}
 	case "lt":
 		if anotherField.IsValid() {
-			isValid, funcError = validateLt(value, anotherField)
+			isValid, funcError = isLt(value, anotherField)
 		} else {
 			return false, nil
 		}
 	case "lte":
 		if anotherField.IsValid() {
-			isValid, funcError = validateLte(value, anotherField)
+			isValid, funcError = isLte(value, anotherField)
 		} else {
 			return false, nil
 		}
 	case "same":
-		isValid, funcError = validateSame(value, anotherField)
+		isValid, funcError = isSame(value, anotherField)
 	case "different":
-		isValid, funcError = validateDifferent(value, anotherField)
+		isValid, funcError = isDifferent(value, anotherField)
 	case "confirmed":
-		isValid, funcError = validateConfirmed(value, anotherField)
+		isValid, funcError = isConfirmed(value, anotherField)
 	case "acceptedIf":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateAcceptedIf(value, anotherField, validTag.params[1:])
+			isValid, funcError = isAcceptedIf(value, anotherField, validTag.params[1:])
 		}
 	case "declinedIf":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateDeclinedIf(value, anotherField, validTag.params[1:])
+			isValid, funcError = isDeclinedIf(value, anotherField, validTag.params[1:])
 		}
 	case "prohibitedIf":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateProhibitedIf(value, anotherField, validTag.params[1:])
+			isValid, funcError = isProhibitedIf(value, anotherField, validTag.params[1:])
 		}
 	case "prohibitedUnless":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateProhibitedUnless(value, anotherField, validTag.params[1:])
+			isValid, funcError = isProhibitedUnless(value, anotherField, validTag.params[1:])
 		}
 	case "missingIf":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateMissingIf(value, anotherField, validTag.params[1:])
+			isValid, funcError = isMissingIf(value, anotherField, validTag.params[1:])
 		}
 	case "missingUnless":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validateMissingUnless(value, anotherField, validTag.params[1:])
+			isValid, funcError = isMissingUnless(value, anotherField, validTag.params[1:])
 		}
 	case "presentIf":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validatePresentIf(value, anotherField, validTag.params[1:])
+			isValid, funcError = isPresentIf(value, anotherField, validTag.params[1:])
 		}
 	case "presentUnless":
 		if len(validTag.params) >= 2 {
-			isValid, funcError = validatePresentUnless(value, anotherField, validTag.params[1:])
+			isValid, funcError = isPresentUnless(value, anotherField, validTag.params[1:])
 		}
 	case "prohibitedIfAccepted":
-		isValid, funcError = validateProhibitedIfAccepted(value, anotherField)
+		isValid, funcError = isProhibitedIfAccepted(value, anotherField)
 	case "prohibitedIfDeclined":
-		isValid, funcError = validateProhibitedIfDeclined(value, anotherField)
+		isValid, funcError = isProhibitedIfDeclined(value, anotherField)
 	case "prohibits":
-		isValid = validateProhibits(value, validTag.params, o)
+		isValid = isProhibits(value, validTag.params, o)
 	case "missingWith":
-		isValid = validateMissingWith(value, validTag.params, o)
+		isValid = isMissingWith(value, validTag.params, o)
 	case "missingWithAll":
-		isValid = validateMissingWithAll(value, validTag.params, o)
+		isValid = isMissingWithAll(value, validTag.params, o)
 	case "presentWith":
-		isValid = validatePresentWith(value, validTag.params, o)
+		isValid = isPresentWith(value, validTag.params, o)
 	case "presentWithAll":
-		isValid = validatePresentWithAll(value, validTag.params, o)
+		isValid = isPresentWithAll(value, validTag.params, o)
 	}
 
 	if !isValid {
@@ -3072,3 +2703,58 @@ func (v *Validator) checkDependentRules(validTag *ValidTag, f *field, value, o r
 	_, err := v.checkDependentRulesWithStatus(validTag, f, value, o, name, structName)
 	return err
 }
+
+// =============================================================================
+// Deprecated: Use Is* functions instead.
+// =============================================================================
+
+var (
+	ValidateBetween           = IsBetween
+	ValidateDigitsBetween     = IsDigitsBetween
+	ValidateSize              = IsSize
+	ValidateMax               = IsMax
+	ValidateMin               = IsMin
+	ValidateGtParam           = IsGtParam
+	ValidateGteParam          = IsGteParam
+	ValidateLtParam           = IsLtParam
+	ValidateLteParam          = IsLteParam
+	ValidateSame              = IsSame
+	ValidateLt                = IsLt
+	ValidateLte               = IsLte
+	ValidateGt                = IsGt
+	ValidateGte               = IsGte
+	ValidateDistinct          = IsDistinct
+	ValidateMultipleOf        = IsMultipleOf
+	ValidateMaxDigits         = IsMaxDigits
+	ValidateMinDigits         = IsMinDigits
+	ValidateDecimalPrecision  = IsDecimalPrecision
+	ValidateContains          = IsContains
+	ValidateDoesntContain     = IsDoesntContain
+	ValidateMimeTypes         = IsMimeTypes
+	ValidateMimes             = IsMimes
+	ValidateImage             = IsImage
+	ValidateRequired          = IsRequired
+	ValidateAccepted          = IsAccepted
+	ValidateDeclined          = IsDeclined
+	ValidateProhibited        = IsProhibited
+	ValidateMissing           = IsMissing
+	ValidatePresent           = IsPresent
+	ValidateRequiredArrayKeys = IsRequiredArrayKeys
+	ValidateList              = IsList
+	ValidateDate              = IsDate
+	ValidateDateFormat        = IsDateFormat
+	ValidateAfter             = IsAfter
+	ValidateAfterOrEqual      = IsAfterOrEqual
+	ValidateBefore            = IsBefore
+	ValidateBeforeOrEqual     = IsBeforeOrEqual
+	ValidateIn                = IsIn
+	ValidateNotIn             = IsNotIn
+	ValidateDifferent         = IsDifferent
+	ValidateJSON              = IsJSON
+	ValidateRegex             = IsRegex
+	ValidateNotRegex          = IsNotRegex
+	ValidateBoolean           = IsBoolean
+	ValidateString            = IsString
+	ValidateArray             = IsArray
+	ValidateFilled            = IsFilled
+)
