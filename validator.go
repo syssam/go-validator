@@ -1196,6 +1196,22 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 	name := buildFieldName(jsonNamespace, f.nameBytes)
 	structName := buildFieldName(structNamespace, f.structNameBytes)
 
+	// Check for custom type functions or auto-detect types with IsSet()/Value() methods
+	// (e.g., graphql.Omittable[T], sql.NullString). Results are cached per type.
+	if value.Kind() == reflect.Struct {
+		if extract := resolveCustomTypeFunc(value.Type()); extract != nil {
+			inner, shouldValidate := extract(value)
+			if !shouldValidate || !inner.IsValid() {
+				// Value was not set — only check required rules
+				if err := v.checkRequired(value, f, o, name, structName); err != nil {
+					return err
+				}
+				return nil
+			}
+			value = inner
+		}
+	}
+
 	// Handle pointer and interface dereferencing
 	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
 		if err := v.checkRequired(value, f, o, name, structName); err != nil {

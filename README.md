@@ -25,6 +25,7 @@
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/echo">Echo</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/iris">Iris</a></li>
   <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/custom">Custom Validation Rules</a></li>
+  <li><a href="https://github.com/syssam/go-validator/tree/master/_examples/customtype">Custom Type Functions (Omittable, sql.Null)</a></li>
 </ul>
 <h2>Available Validation Rules</h2>
 <ul>
@@ -303,6 +304,76 @@ weekAgo := validator.T(validator.Today()).SubDays(7)
 nextMonth := validator.T(validator.Today()).AddMonths(1)
 years18Ago := validator.T(validator.Today()).SubYears(18)
 </pre>
+<h2>Custom Type Functions (Wrapper Type Support)</h2>
+<p>Two mechanisms for unwrapping wrapper types before validation:</p>
+<ul>
+  <li><strong><code>RegisterAutoUnwrap</code></strong> — register a type matcher with method names for automatic unwrapping. The validator auto-builds optimized unwrappers with cached method indices. One registration handles all type parameter variants. Best for generic types like <code>graphql.Omittable[T]</code>.</li>
+  <li><strong><code>RegisterCustomTypeFunc</code></strong> — explicit registration with direct type assertion. Fastest performance, best for types without <code>IsSet()/Value()</code> methods (e.g., <code>sql.NullString</code>).</li>
+</ul>
+<h4>gqlgen graphql.Omittable (RegisterAutoUnwrap — one registration for all variants)</h4>
+<pre>
+import (
+    "reflect"
+    "strings"
+)
+
+// One registration handles ALL Omittable[T] variants (300+ types).
+// Specify the method names — the validator builds optimized unwrappers
+// with cached method indices automatically.
+validator.RegisterAutoUnwrap(
+    func(t reflect.Type) bool {
+        return strings.HasPrefix(t.Name(), "Omittable[") &&
+            strings.Contains(t.PkgPath(), "gqlgen")
+    },
+    "IsSet", // Omittable.IsSet() bool — returns whether the value is set
+    "Value", // Omittable.Value() T   — returns the inner value
+)
+
+type UpdateUserInput struct {
+    Name  graphql.Omittable[*string] `json:"name" valid:"required"`
+    Email graphql.Omittable[*string] `json:"email" valid:"required,email"`
+    Age   graphql.Omittable[int]     `json:"age" valid:"min=0"`
+}
+</pre>
+<h4>database/sql Null Types (RegisterCustomTypeFunc — fastest performance)</h4>
+<pre>
+import "database/sql"
+
+// sql.Null* types use a .Valid field instead of IsSet()/Value() methods,
+// so register each type explicitly for best performance.
+validator.RegisterCustomTypeFunc(func(n sql.NullString) (any, bool) {
+    if !n.Valid {
+        return nil, false // NULL → skip validation
+    }
+    return n.String, true // valid → validate the string
+})
+validator.RegisterCustomTypeFunc(func(n sql.NullInt64) (any, bool) {
+    if !n.Valid {
+        return nil, false
+    }
+    return n.Int64, true
+})
+validator.RegisterCustomTypeFunc(func(n sql.NullFloat64) (any, bool) {
+    if !n.Valid {
+        return nil, false
+    }
+    return n.Float64, true
+})
+
+type User struct {
+    Name  sql.NullString  `valid:"required"`
+    Email sql.NullString  `valid:"required,email"`
+    Age   sql.NullInt64   `valid:"min=18"`
+    Score sql.NullFloat64 `valid:"between=0|100"`
+}
+</pre>
+<p><strong>Behavior:</strong></p>
+<ul>
+  <li>When the wrapper reports "not set" (<code>false</code>): only <code>required</code> rules are checked — all other validation is skipped</li>
+  <li>When the wrapper reports "set" (<code>true</code>): the inner value is extracted and validated normally with all rules</li>
+  <li>Exact match (<code>RegisterCustomTypeFunc</code>) takes priority over <code>RegisterAutoUnwrap</code></li>
+  <li>Auto-unwrap results are cached per type — matcher and method checks run only once per distinct type</li>
+</ul>
 <h2>Custom Validation Rules</h2>
 <div class="highlight highlight-source-go">
   <pre>
