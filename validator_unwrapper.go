@@ -110,7 +110,9 @@ func ResetCustomTypeFuncs() {
 	autoUnwrapMatchersMu.Lock()
 	autoUnwrapMatchers = nil
 	autoUnwrapMatchersMu.Unlock()
-	autoUnwrapCache = sync.Map{}
+	// Clear in place, consistent with RegisterAutoUnwrap — reassigning the
+	// sync.Map value would race with concurrent Load calls.
+	clearSyncMap(&autoUnwrapCache)
 }
 
 // resolveCustomTypeFunc returns the extract function for the given type.

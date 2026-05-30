@@ -18,6 +18,12 @@ import (
 // regexCache stores compiled regular expressions to avoid recompilation
 var regexCache sync.Map // map[string]*regexp.Regexp
 
+// Reusable zero-size map value for set-style reflect maps (e.g. isDistinct).
+var (
+	emptyStructType  = reflect.TypeOf(struct{}{})
+	emptyStructValue = reflect.ValueOf(struct{}{})
+)
+
 // getCompiledRegex returns a cached compiled regex or compiles and caches it.
 // Uses LoadOrStore pattern to handle concurrent access correctly.
 func getCompiledRegex(pattern string) (*regexp.Regexp, error) {
@@ -508,22 +514,17 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 }
 
 // checkRequiredIfCondition checks if the required condition is met and updates tag parameters
-func checkRequiredIfCondition(v reflect.Value, values, params []string, tag *ValidTag) (bool, error) {
+// checkRequiredIfCondition reports whether the field is required (invalid) and,
+// when it is, the matched value that triggered the requirement. It must not
+// mutate any cached tag — the matched value is returned to the caller so the
+// "Value" message parameter can be built per call.
+func checkRequiredIfCondition(v reflect.Value, values, params []string) (valid bool, matchedValue string, err error) {
 	for _, value := range values {
 		if InString(value, params) && Empty(v) {
-			if tag != nil {
-				tag.messageParameters = append(
-					tag.messageParameters,
-					messageParameter{
-						Key:   "Value",
-						Value: value,
-					},
-				)
-			}
-			return false, nil
+			return false, value, nil
 		}
 	}
-	return true, nil
+	return true, "", nil
 }
 
 // isCustomTypeRules validates using CustomTypeRuleMap
@@ -844,19 +845,19 @@ func isDistinct(v reflect.Value) (bool, error) {
 		reflect.Float32, reflect.Float64:
 		return true, nil
 	case reflect.Slice, reflect.Array:
-		m := reflect.MakeMap(reflect.MapOf(v.Type().Elem(), v.Type()))
-
+		// Only keys matter for uniqueness; use a zero-size value type so each
+		// entry stores nothing instead of a full copy of the collection.
+		seen := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Elem(), emptyStructType), v.Len())
 		for i := 0; i < v.Len(); i++ {
-			m.SetMapIndex(v.Index(i), v)
+			seen.SetMapIndex(v.Index(i), emptyStructValue)
 		}
-		return v.Len() == m.Len(), nil
+		return v.Len() == seen.Len(), nil
 	case reflect.Map:
-		m := reflect.MakeMap(reflect.MapOf(v.Type().Elem(), v.Type()))
-
+		seen := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Elem(), emptyStructType), v.Len())
 		for _, k := range v.MapKeys() {
-			m.SetMapIndex(v.MapIndex(k), v)
+			seen.SetMapIndex(v.MapIndex(k), emptyStructValue)
 		}
-		return v.Len() == m.Len(), nil
+		return v.Len() == seen.Len(), nil
 	}
 
 	return false, fmt.Errorf("validator: Distinct unsupported type %T", v.Interface())
@@ -1191,13 +1192,10 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace
 		return fmt.Errorf("function only accepts structs; got %s", val.Kind())
 	}
 
+	// errs is left nil: the common case is zero errors, and appending from nil
+	// avoids allocating a backing array that a successful validation never uses.
 	var errs Errors
 	fields := cachedTypefields(val.Type())
-
-	// Pre-allocate slice capacity to reduce allocations
-	if len(fields) > 0 {
-		errs = make(Errors, 0, len(fields)/2) // Assume ~50% will have validation errors
-	}
 
 	//nolint:gocritic // Field struct copying is acceptable for validation library performance
 	for _, f := range fields {
@@ -2227,13 +2225,13 @@ func IsFilled(i interface{}) (bool, error) {
 }
 
 // isRequiredIf check value required when anotherField str is a member of the set of strings params
-func isRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag) (bool, error) {
+func isRequiredIf(v, anotherField reflect.Value, params []string) (valid bool, matchedValue string, err error) {
 	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
 		anotherField = anotherField.Elem()
 	}
 
 	if !anotherField.IsValid() {
-		return true, nil
+		return true, "", nil
 	}
 
 	switch anotherField.Kind() {
@@ -2243,27 +2241,20 @@ func isRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag)
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherField)
-		if InString(value, params) && Empty(v) && tag != nil {
-			tag.messageParameters = append(
-				tag.messageParameters,
-				messageParameter{
-					Key:   "Value",
-					Value: value,
-				},
-			)
-			return false, nil
+		if InString(value, params) && Empty(v) {
+			return false, value, nil
 		}
 	case reflect.Map, reflect.Slice, reflect.Array:
 		values, err := extractValuesFromCollection(anotherField)
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
-		return checkRequiredIfCondition(v, values, params, tag)
+		return checkRequiredIfCondition(v, values, params)
 	default:
-		return false, fmt.Errorf("validator: RequiredIf unsupported type %T", anotherField.Interface())
+		return false, "", fmt.Errorf("validator: RequiredIf unsupported type %T", anotherField.Interface())
 	}
 
-	return true, nil
+	return true, "", nil
 }
 
 // isRequiredUnless check value required when anotherField str is a member of the set of strings params
@@ -2340,6 +2331,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 		var funcError error
 		isError := false
 		var isValid bool
+		var requiredIfValue string
 		switch tag.name {
 		case "required":
 			isError = !isRequired(value)
@@ -2349,7 +2341,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil && len(tag.params) >= 2 {
-				isValid, funcError = isRequiredIf(value, anotherField, tag.params[1:], tag)
+				isValid, requiredIfValue, funcError = isRequiredIf(value, anotherField, tag.params[1:])
 				if !isValid {
 					isError = true
 				}
@@ -2406,12 +2398,21 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 		}
 
 		if isError {
+			messageParameters := parseValidatorMessageParameters(tag, o)
+			if tag.name == "requiredIf" {
+				// "Value" is the runtime value of the referenced field that
+				// triggered the requirement; built per call, never cached.
+				messageParameters = append(messageParameters, messageParameter{
+					Key:   "Value",
+					Value: requiredIfValue,
+				})
+			}
 			return v.formatsMessages(&FieldError{
 				Name:              name,
 				StructName:        structName,
 				Tag:               tag.name,
 				MessageName:       tag.messageName,
-				MessageParameters: parseValidatorMessageParameters(tag, o),
+				MessageParameters: messageParameters,
 				Attribute:         f.attribute,
 				DefaultAttribute:  f.defaultAttribute,
 				Value:             ToString(value.Interface()),
@@ -2456,7 +2457,9 @@ func isRequiredWithoutAll(otherFields []string, currentField, obj reflect.Value)
 }
 
 func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) MessageParameters {
-	messageParameters := validTag.messageParameters
+	// Copy the cached base params; appending below must never mutate or alias
+	// the shared (cached) tag, since this runs on concurrent validations.
+	messageParameters := append(MessageParameters(nil), validTag.messageParameters...)
 	switch validTag.name {
 	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
 		first := true

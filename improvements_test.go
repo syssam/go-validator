@@ -3,9 +3,59 @@ package validator
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 )
+
+// TestRequiredIfDoesNotMutateCachedTag is a regression test for a data race +
+// unbounded-growth bug: isRequiredIf/checkRequiredIfCondition appended the
+// "Value" message parameter to the SHARED cached *ValidTag on every failing
+// validation, so parameters accumulated across calls and concurrent validation
+// raced on the slice.
+func TestRequiredIfDoesNotMutateCachedTag(t *testing.T) {
+	type Form struct {
+		Status string
+		Reason string `valid:"requiredIf=Status|active"`
+	}
+
+	var first int
+	for i := 1; i <= 3; i++ {
+		err := ValidateStruct(&Form{Status: "active", Reason: ""})
+		if err == nil {
+			t.Fatal("expected error: Reason required when Status is active")
+		}
+		fe := err.(Errors)[0].(*FieldError)
+		if i == 1 {
+			first = len(fe.MessageParameters)
+		} else if len(fe.MessageParameters) != first {
+			t.Fatalf("message parameters grew across calls (%d -> %d): cached tag is being mutated",
+				first, len(fe.MessageParameters))
+		}
+		// The runtime value must still render in the message.
+		if !strings.Contains(fe.Message, "active") {
+			t.Errorf("call %d: expected message to contain 'active', got %q", i, fe.Message)
+		}
+	}
+}
+
+// TestRequiredIfConcurrentNoRace runs the same requiredIf validation from many
+// goroutines; with the cached-tag mutation present this trips the race detector.
+func TestRequiredIfConcurrentNoRace(t *testing.T) {
+	type Form struct {
+		Status string
+		Reason string `valid:"requiredIf=Status|active"`
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 64; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = ValidateStruct(&Form{Status: "active", Reason: ""})
+		}()
+	}
+	wg.Wait()
+}
 
 // TestTransTranslatesAllErrorsAfterCustomMessage is a regression test for the
 // break-vs-continue bug in Trans: once one field matched a custom message, the
