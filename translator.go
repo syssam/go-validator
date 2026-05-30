@@ -41,15 +41,15 @@ func (t *Translator) SetAttributes(langCode string, messages Translate) {
 
 // Trans translate errors
 func (t *Translator) Trans(errors Errors, language string) Errors {
-	for i := 0; i < len(errors); i++ {
+	for i := range errors {
 		fieldError, ok := errors[i].(*FieldError)
 		if !ok {
-			break
+			continue
 		}
 
 		if m, ok := t.customMessage[language][fieldError.Name+"."+fieldError.MessageName]; ok {
 			errors[i].(*FieldError).SetMessage(m)
-			break
+			continue
 		}
 
 		message, ok := t.messages[language][fieldError.MessageName]

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	validator "github.com/syssam/go-validator"
 	"github.com/99designs/gqlgen/graphql"
+	validator "github.com/syssam/go-validator"
 )
 
 // --- Struct definitions ---

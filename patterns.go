@@ -51,12 +51,11 @@ const (
 	Unix
 )
 
-//nolint:unused // Regex patterns kept for potential future use
+// Compiled regexes used by the string validators. These are compiled once at
+// package init; the corresponding pattern strings above remain exported for
+// callers who want to compile their own.
 var (
 	rxEmail            = regexp.MustCompile(Email)
-	rxCreditCard       = regexp.MustCompile(CreditCard)
-	rxISBN10           = regexp.MustCompile(ISBN10)
-	rxISBN13           = regexp.MustCompile(ISBN13)
 	rxUUID3            = regexp.MustCompile(UUID3)
 	rxUUID4            = regexp.MustCompile(UUID4)
 	rxUUID5            = regexp.MustCompile(UUID5)
@@ -73,11 +72,5 @@ var (
 	rxNumeric          = regexp.MustCompile(Numeric)
 	rxInt              = regexp.MustCompile(Int)
 	rxFloat            = regexp.MustCompile(Float)
-	rxHexadecimal      = regexp.MustCompile(Hexadecimal)
 	rxHexColor         = regexp.MustCompile(HexColor)
-	rxRGBColor         = regexp.MustCompile(RGBColor)
-	rxRGBAColor        = regexp.MustCompile(RGBAColor)
-	rxHSLColor         = regexp.MustCompile(HSLColor)
-	rxHSLAColor        = regexp.MustCompile(HSLAColor)
-	rxURL              = regexp.MustCompile(URL)
 )

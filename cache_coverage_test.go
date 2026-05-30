@@ -27,23 +27,6 @@ func TestShouldSkipField(t *testing.T) {
 	}
 }
 
-// Test isValidAttribute function (currently unused)
-func TestIsValidAttribute(t *testing.T) {
-	f := &field{}
-
-	// Test function exists and handles empty string
-	result := f.isValidAttribute("")
-	if result {
-		t.Error("Expected empty string to be invalid")
-	}
-
-	// The function rejects most strings due to its character restrictions
-	result = f.isValidAttribute("validattribute") // no special chars
-	if !result {
-		t.Error("Expected simple string without special chars to be valid")
-	}
-}
-
 // Test parseMessageParameterIntoSlice edge cases
 func TestParseMessageParameterIntoSlice(t *testing.T) {
 	f := &field{}

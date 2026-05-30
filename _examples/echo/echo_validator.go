@@ -13,7 +13,7 @@ type DefaultValidator struct {
 }
 
 // Validate return error
-func (v *DefaultValidator) Validate(obj interface{}) error {
+func (v *DefaultValidator) Validate(obj any) error {
 	v.lazyinit()
 	if err := validator.ValidateStruct(obj); err != nil {
 		return error(err)

@@ -259,7 +259,7 @@ func BenchmarkPerformanceOptimizations(t *testing.B) {
 
 // BenchmarkToStringOptimization benchmarks the optimized ToString function
 func BenchmarkToStringOptimization(t *testing.B) {
-	testValues := []interface{}{
+	testValues := []any{
 		"string value",
 		42,
 		int64(123456789),

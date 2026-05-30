@@ -60,7 +60,7 @@ func shouldSkipField(sf reflect.StructField) bool {
 	isUnexported := sf.PkgPath != ""
 	if sf.Anonymous {
 		t := sf.Type
-		if t.Kind() == reflect.Ptr {
+		if t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		if isUnexported && t.Kind() != reflect.Struct {
@@ -92,7 +92,7 @@ func getFieldName(sf reflect.StructField, f *field) string {
 func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.Type, index []int, validTag string) field {
 	name := getFieldName(sf, f)
 	tagged := sf.Tag.Get("json") != "" && f.isvalidTag(sf.Tag.Get("json"))
-	requiredTags, otherValidTags, defaultAttribute := f.parseTagIntoSlice(validTag, ft)
+	requiredTags, otherValidTags, defaultAttribute, omitEmpty, nullable := f.parseTagIntoSlice(validTag, ft)
 
 	return field{
 		name:             name,
@@ -106,13 +106,13 @@ func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.
 		requiredTags:     requiredTags,
 		validTags:        otherValidTags,
 		typ:              ft,
-		omitEmpty:        strings.Contains(validTag, "omitempty"),
-		nullable:         strings.Contains(validTag, "nullable"),
+		omitEmpty:        omitEmpty,
+		nullable:         nullable,
 	}
 }
 
 // processStructField processes a single struct field and updates fields/next accordingly
-func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int, count, nextCount map[reflect.Type]int, fields, next *[]field) {
+func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int, _, nextCount map[reflect.Type]int, fields, next *[]field) {
 	if shouldSkipField(sf) {
 		return
 	}
@@ -127,30 +127,34 @@ func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int,
 	index[len(f.index)] = i
 
 	ft := sf.Type
-	if validTag == "" && ft.Kind() != reflect.Slice && ft.Kind() != reflect.Array {
-		return
+	if ft.Name() == "" && ft.Kind() == reflect.Pointer {
+		// Follow pointer (so an embedded *Struct is treated as the struct).
+		ft = ft.Elem()
 	}
 
-	if ft.Name() == "" && ft.Kind() == reflect.Ptr {
-		// Follow pointer.
-		ft = ft.Elem()
+	// Skip an untagged field only when it cannot contain anything to validate.
+	// Collections (their elements), structs (nested/embedded fields), and
+	// pointers-to-struct (ft was already dereferenced above) are kept so their
+	// contents are validated recursively — matching how most validators treat
+	// nested data, and consistent with embedded-struct promotion.
+	if validTag == "" &&
+		ft.Kind() != reflect.Slice &&
+		ft.Kind() != reflect.Array &&
+		ft.Kind() != reflect.Struct {
+		return
 	}
 
 	name := getFieldName(sf, f)
 
-	// Record found field and index sequence.
+	// Record found field and index sequence. (encoding/json adds a duplicate
+	// here when count[f.typ] > 1 so a later "annihilation" pass can drop
+	// ambiguous embedded fields — but this package has no such pass, and the
+	// original port also incremented count per field, so every field after the
+	// first was silently duplicated. That produced duplicate errors and made
+	// nested validation O(2^depth). Each field is now recorded exactly once.
 	if name != sf.Name || !sf.Anonymous || ft.Kind() != reflect.Struct {
-		count[f.typ]++
 		newField := createFieldFromStructField(sf, f, t, ft, index, validTag)
 		*fields = append(*fields, newField)
-
-		if count[f.typ] > 1 {
-			// If there were multiple instances, add a second,
-			// so that the annihilation code will see a duplicate.
-			// It only cares about the distinction between 1 or 2,
-			// so don't bother generating any more copies.
-			*fields = append(*fields, (*fields)[len(*fields)-1])
-		}
 		return
 	}
 
@@ -196,11 +200,12 @@ func typefields(t reflect.Type) []field {
 	return fields
 }
 
-func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags, string) {
+func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags, string, bool, bool) {
 	options := strings.Split(tag, ",")
 	var otherValidTags otherValidTags
 	var requiredTags requiredTags
 	defaultAttribute := ""
+	var omitEmpty, nullable bool
 
 	for _, option := range options {
 		option = strings.TrimSpace(option)
@@ -218,8 +223,14 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 				defaultAttribute = tag[1]
 			}
 			continue
-		case "omitempty", "nullable":
-			// Meta-rules that are handled separately, not as validators
+		case "omitempty":
+			// Meta-rule handled separately, not as a validator. Detected here
+			// (exact option match) rather than via strings.Contains on the raw
+			// tag, which would false-positive on a param value.
+			omitEmpty = true
+			continue
+		case "nullable":
+			nullable = true
 			continue
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll", "requiredIfAccepted", "requiredIfDeclined":
 			messageParameters, _ := f.parseMessageParameterIntoSlice(tag[0], params...)
@@ -241,25 +252,10 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 		})
 	}
 
-	return requiredTags, otherValidTags, defaultAttribute
+	return requiredTags, otherValidTags, defaultAttribute, omitEmpty, nullable
 }
 
 func (f *field) isvalidTag(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, c := range s {
-		if strings.ContainsRune("\\'\"!#$%&()*+-./:<=>?@[]^_{|}~ ", c) {
-			// Backslash and quote chars are reserved, but
-			// otherwise anything goes.
-			return false
-		}
-	}
-	return true
-}
-
-//nolint:unused // Kept for potential future use
-func (f *field) isValidAttribute(s string) bool {
 	if s == "" {
 		return false
 	}
@@ -289,7 +285,7 @@ func (f *field) parseMessageName(rule string, ft reflect.Type) string {
 			return messageName + ".string"
 		case reflect.Array, reflect.Slice, reflect.Map:
 			return messageName + ".array"
-		case reflect.Struct, reflect.Ptr:
+		case reflect.Struct, reflect.Pointer:
 			return messageName
 		default:
 			return messageName

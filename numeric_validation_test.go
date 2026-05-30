@@ -248,7 +248,7 @@ func TestCompareInt64AllOperators(t *testing.T) {
 func TestValidateDigitsBetweenGeneric(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		params   []string
 		expected bool
 		hasError bool

@@ -100,6 +100,33 @@ if err != nil {
 }
 ```
 
+### Nested, Embedded, and Recursive Structs
+
+- **Nested structs** (named or pointer) are validated **recursively and
+  automatically** — a field no longer needs its own `valid` tag for its inner
+  fields to be checked. `time.Time`/`decimal.Decimal` are treated as scalar
+  types, not recursed into.
+- **Embedded (anonymous) structs** have their promoted fields validated as if
+  declared on the parent. A nil embedded pointer is skipped (no panic).
+- **Cyclic references** (a node pointing back to an ancestor) terminate via a
+  depth guard (`maxValidationDepth`) that returns an error instead of looping
+  forever. Validation is linear in the number of fields/elements.
+
+### Fail-Fast vs Collect-All
+
+By default the validator collects every error. Set `FailFast` on a `Validator`
+instance to stop at the first field that fails and return immediately (similar to
+Joi's `abortEarly` / Laravel's `stopOnFirstFailure`):
+
+```go
+v := validator.New()
+v.FailFast = true // stop at the first failing field
+err := v.ValidateStruct(user, nil, nil)
+```
+
+`FailFast` defaults to `false` (collect-all), preserving backward-compatible
+behavior. Configure it once at setup, before concurrent validation.
+
 ### Custom Validation Rules
 ```go
 validator.CustomTypeRuleMap.Set("customRule", func(v reflect.Value, o reflect.Value, validTag *validator.ValidTag) bool {
@@ -122,17 +149,27 @@ if fieldError.HasFuncError() {
 
 ### Available Validation Rules
 
-**Core Rules**: `required`, `email`, `min`, `max`, `between`, `size`, `alpha`, `numeric`, `ip`, `url`, `uuid`
+The authoritative rule registry lives in `types.go` (`RuleMap`, `ParamRuleMap`, `StringRulesMap`, `StringParamRulesMap`). When you add or rename a rule, update this list to match.
+
+**Core / Presence Rules**: `required`, `filled`, `present`, `missing`, `prohibited`, `accepted`, `declined`
 
 **Conditional Rules**: `requiredIf`, `requiredUnless`, `requiredWith`, `requiredWithAll`, `requiredWithout`, `requiredWithoutAll` *(implemented in validator logic)*
 
-**Comparison Rules**: `gt`, `gte`, `lt`, `lte`, `same`, `distinct`
+**Comparison Rules**: `gt`, `gte`, `lt`, `lte`, `same`, `distinct`, `multipleOf`
 
-**String Rules**: `alphaNum`, `alphaDash`, `alphaUnicode`, `alphaNumUnicode`, `alphaDashUnicode`
+**Size Rules**: `min`, `max`, `between`, `size`, `digitsBetween`, `minDigits`, `maxDigits`, `decimal`
 
-**Network Rules**: `ipv4`, `ipv6`, `uuid3`, `uuid4`, `uuid5`
+**Type Rules**: `int`, `integer`, `float`, `numeric`, `string`, `boolean`, `array`, `list`, `json`, `date`
 
-**Type Rules**: `int`, `integer`, `float`, `digitsBetween`
+**String Rules**: `email`, `alpha`, `alphaNum`, `alphaDash`, `alphaUnicode`, `alphaNumUnicode`, `alphaDashUnicode`, `ascii`, `lowercase`, `uppercase`, `hexColor`, `startsWith`, `endsWith`, `doesntStartWith`, `doesntEndWith`, `contains`, `doesntContain`
+
+**Network Rules**: `ip`, `ipv4`, `ipv6`, `url`, `macAddress`, `uuid`, `uuid3`, `uuid4`, `uuid5`, `ulid`
+
+**Pattern Rules**: `regex`, `notRegex`, `in`, `notIn`
+
+**Date Rules**: `dateFormat`, `after`, `afterOrEqual`, `before`, `beforeOrEqual`, `timezone`
+
+**Locale Rules**: `country`, `currency`, `language`, `phone` *(see `validator_country.go`, `validator_currency.go`, `validator_language.go`, `validator_phone.go`; locale variants use a dot separator, e.g. `country.alpha2`)*
 
 **Note**: All regex patterns are defined in `patterns.go`. Some conditional rules are implemented in the main validation logic but may require specific struct field relationships to function.
 
@@ -190,11 +227,24 @@ func ValidateJSON(c *gin.Context, obj interface{}) error {
 
 ### Custom Language Implementation
 ```go
-// Register custom translator
+// Register a translator and load per-language message sets.
 translator := validator.NewTranslator()
-translator.SetLanguage("fr") // French
-validator.MessageMap["required"] = "Ce champ est requis"
+translator.SetMessage("fr", validator.Translate{
+    "required": "{{.Attribute}} est requis",
+})
+
+// Translate a collected Errors set into the target language.
+if err := validator.ValidateStruct(obj); err != nil {
+    errs := translator.Trans(err.(validator.Errors), "fr")
+    // errs now carry localized messages
+}
 ```
+
+> **Thread-safety note:** the package-level configuration maps — `MessageMap`,
+> `RuleMap`, `ParamRuleMap`, `StringRulesMap`, and `Mimes` — are plain maps with
+> no internal locking. Configure them **once at init, before** any concurrent
+> `ValidateStruct` calls. Only `CustomTypeRuleMap` is safe to mutate at runtime.
+> `*Translator` instances are read-only after setup and safe for concurrent use.
 
 ## Performance Characteristics
 

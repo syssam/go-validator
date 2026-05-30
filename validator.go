@@ -18,6 +18,12 @@ import (
 // regexCache stores compiled regular expressions to avoid recompilation
 var regexCache sync.Map // map[string]*regexp.Regexp
 
+// Reusable zero-size map value for set-style reflect maps (e.g. isDistinct).
+var (
+	emptyStructType  = reflect.TypeOf(struct{}{})
+	emptyStructValue = reflect.ValueOf(struct{}{})
+)
+
 // getCompiledRegex returns a cached compiled regex or compiles and caches it.
 // Uses LoadOrStore pattern to handle concurrent access correctly.
 func getCompiledRegex(pattern string) (*regexp.Regexp, error) {
@@ -68,6 +74,17 @@ func putBuffer(buf *[]byte) {
 	byteBufferPool.Put(buf)
 }
 
+// appendNamespace returns a fresh namespace of the form base + part + ".".
+// It always allocates a new backing array so sibling fields can never corrupt
+// each other's paths through append-aliasing of a shared base slice.
+func appendNamespace(base, part []byte) []byte {
+	out := make([]byte, 0, len(base)+len(part)+1)
+	out = append(out, base...)
+	out = append(out, part...)
+	out = append(out, '.')
+	return out
+}
+
 // buildFieldName efficiently builds a field name string
 func buildFieldName(namespace, fieldName []byte) string {
 	if len(namespace) == 0 {
@@ -88,20 +105,13 @@ func buildFieldName(namespace, fieldName []byte) string {
 // deref dereferences interface and pointer values to their underlying value.
 // This consolidates the repeated pattern found 30+ times in the codebase.
 func deref(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Interface || v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return v
 		}
 		v = v.Elem()
 	}
 	return v
-}
-
-// isValidAndNonEmpty checks if a value is valid and non-empty.
-// Returns true if validation should be skipped (value is empty/invalid).
-func isValidAndNonEmpty(v reflect.Value) bool {
-	v = deref(v)
-	return v.IsValid() && !Empty(v)
 }
 
 // comparisonOp represents a comparison operator
@@ -237,6 +247,11 @@ type Validator struct {
 	Attributes    map[string]string
 	CustomMessage map[string]string
 	Translator    *Translator
+	// FailFast stops validation at the first field that fails and returns
+	// immediately, instead of collecting every error. The default (false)
+	// preserves the collect-all behavior. Set it once at setup, before
+	// concurrent ValidateStruct calls.
+	FailFast bool
 }
 
 // Default returns a instance of Validator
@@ -404,6 +419,39 @@ func (v *Validator) validateWithStringParamRulesMap(tag *ValidTag, value reflect
 	return nil
 }
 
+// isFieldComparisonRule reports whether a rule name is a comparison rule that may
+// have already been satisfied by dependent field comparison (gt/gte/lt/lte).
+func isFieldComparisonRule(name string) bool {
+	return name == "gt" || name == "gte" || name == "lt" || name == "lte"
+}
+
+// applyRuleMaps runs RuleMap then ParamRuleMap for a single tag. ParamRuleMap is
+// skipped for comparison rules already handled by dependent field comparison.
+func (v *Validator) applyRuleMaps(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value, handled bool) error {
+	if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
+		return err
+	}
+	if handled && isFieldComparisonRule(tag.name) {
+		return nil
+	}
+	return v.validateWithParamRuleMap(tag, value, f, name, structName, o)
+}
+
+// validateCollectionRules applies dependent rules and RuleMap/ParamRuleMap to a
+// map or slice value (without string-specific rules).
+func (v *Validator) validateCollectionRules(f *field, value reflect.Value, name, structName string, o reflect.Value) error {
+	for _, tag := range f.validTags {
+		handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
+		if err != nil {
+			return err
+		}
+		if err := v.applyRuleMaps(tag, value, f, name, structName, o, handled); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // isCommonRules applies common validation rules (RuleMap, ParamRuleMap, dependent rules)
 func (v *Validator) validateCommonRules(tags otherValidTags, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	for _, tag := range tags {
@@ -412,17 +460,8 @@ func (v *Validator) validateCommonRules(tags otherValidTags, value reflect.Value
 			return err
 		}
 
-		// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-		skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-		if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
+		if err := v.applyRuleMaps(tag, value, f, name, structName, o, handled); err != nil {
 			return err
-		}
-
-		if !skipParamRule {
-			if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
 		}
 
 		if value.Kind() == reflect.String {
@@ -448,7 +487,7 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 		sort.Sort(sv)
 		for _, k := range sv {
 			mapValue := field.MapIndex(k)
-			if mapValue.Kind() == reflect.Interface || mapValue.Kind() == reflect.Ptr {
+			if mapValue.Kind() == reflect.Interface || mapValue.Kind() == reflect.Pointer {
 				mapValue = mapValue.Elem()
 			}
 			if mapValue.Kind() != reflect.Struct {
@@ -460,7 +499,7 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 	case reflect.Slice, reflect.Array:
 		for i := 0; i < field.Len(); i++ {
 			sliceValue := field.Index(i)
-			if sliceValue.Kind() == reflect.Interface || sliceValue.Kind() == reflect.Ptr {
+			if sliceValue.Kind() == reflect.Interface || sliceValue.Kind() == reflect.Pointer {
 				sliceValue = sliceValue.Elem()
 			}
 			if sliceValue.Kind() != reflect.Struct {
@@ -475,22 +514,17 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 }
 
 // checkRequiredIfCondition checks if the required condition is met and updates tag parameters
-func checkRequiredIfCondition(v reflect.Value, values, params []string, tag *ValidTag) (bool, error) {
+// checkRequiredIfCondition reports whether the field is required (invalid) and,
+// when it is, the matched value that triggered the requirement. It must not
+// mutate any cached tag — the matched value is returned to the caller so the
+// "Value" message parameter can be built per call.
+func checkRequiredIfCondition(v reflect.Value, values, params []string) (valid bool, matchedValue string, err error) {
 	for _, value := range values {
 		if InString(value, params) && Empty(v) {
-			if tag != nil {
-				tag.messageParameters = append(
-					tag.messageParameters,
-					messageParameter{
-						Key:   "Value",
-						Value: value,
-					},
-				)
-			}
-			return false, nil
+			return false, value, nil
 		}
 	}
-	return true, nil
+	return true, "", nil
 }
 
 // isCustomTypeRules validates using CustomTypeRuleMap
@@ -511,7 +545,7 @@ func (v *Validator) validateCustomTypeRules(tags otherValidTags, value reflect.V
 }
 
 // isMapFields validates map structure and each element
-func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte, depth int) error {
 	if value.Type().Key().Kind() != reflect.String {
 		return &UnsupportedTypeError{value.Type()}
 	}
@@ -521,16 +555,19 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 	for _, k := range sv {
 		var err error
 		item := value.MapIndex(k)
-		if value.Kind() == reflect.Interface {
+		// Deref interface-valued map entries (e.g. map[string]any of
+		// structs). This checks item, not value: value is always the map, so
+		// the previous value.Kind()==Interface check never fired and such
+		// entries were silently skipped — inconsistent with validateSliceFields.
+		if item.Kind() == reflect.Interface {
 			item = item.Elem()
 		}
 
-		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
-			newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-			newJSONNamespace = append(append(newJSONNamespace, []byte(k.String())...), '.')
-			newstructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
-			newstructNamespace = append(append(newstructNamespace, []byte(k.String())...), '.')
-			err = v.ValidateStruct(item.Interface(), newJSONNamespace, newstructNamespace)
+		if item.Kind() == reflect.Struct || item.Kind() == reflect.Pointer {
+			key := []byte(k.String())
+			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), key)
+			newstructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), key)
+			err = v.validateStruct(item.Interface(), newJSONNamespace, newstructNamespace, depth+1)
 			if err != nil {
 				return err
 			}
@@ -540,7 +577,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 }
 
 // isSliceFields validates slice/array structure and each element
-func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte, depth int) error {
 	for i := 0; i < value.Len(); i++ {
 		var err error
 		item := value.Index(i)
@@ -548,12 +585,11 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 			item = item.Elem()
 		}
 
-		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
-			newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-			newJSONNamespace = append(append(newJSONNamespace, []byte(strconv.Itoa(i))...), '.')
-			newStructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
-			newStructNamespace = append(append(newStructNamespace, []byte(strconv.Itoa(i))...), '.')
-			err = v.ValidateStruct(value.Index(i).Interface(), newJSONNamespace, newStructNamespace)
+		if item.Kind() == reflect.Struct || item.Kind() == reflect.Pointer {
+			index := []byte(strconv.Itoa(i))
+			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), index)
+			newStructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), index)
+			err = v.validateStruct(value.Index(i).Interface(), newJSONNamespace, newStructNamespace, depth+1)
 			if err != nil {
 				return err
 			}
@@ -563,7 +599,7 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 }
 
 // IsBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
-func IsBetween(i interface{}, params []string) (bool, error) {
+func IsBetween(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBetween(v, params)
 }
@@ -605,7 +641,7 @@ func isDigitsBetween(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDigitsBetween check The field under validation must have a length between the given min and max.
-func IsDigitsBetween(i interface{}, params []string) (bool, error) {
+func IsDigitsBetween(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDigitsBetween(v, params)
 }
@@ -674,7 +710,7 @@ func isSize(v reflect.Value, param []string) (bool, error) {
 // For string data, value corresponds to the number of characters.
 // For numeric data, value corresponds to a given integer value.
 // For an array | map | slice, size corresponds to the count of the array | map | slice.
-func IsSize(i interface{}, params []string) (bool, error) {
+func IsSize(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isSize(v, params)
 }
@@ -685,7 +721,7 @@ func isMax(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMax is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsMax(i interface{}, params []string) (bool, error) {
+func IsMax(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMax(v, params)
 }
@@ -696,7 +732,7 @@ func isMin(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsMin(i interface{}, params []string) (bool, error) {
+func IsMin(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMin(v, params)
 }
@@ -707,7 +743,7 @@ func isGtParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsGtParam is the validation function for validating if the current field's value is greater than the param's value.
-func IsGtParam(i interface{}, params []string) (bool, error) {
+func IsGtParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isGtParam(v, params)
 }
@@ -718,7 +754,7 @@ func isGteParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsGteParam(i interface{}, params []string) (bool, error) {
+func IsGteParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isGteParam(v, params)
 }
@@ -729,7 +765,7 @@ func isLtParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsLtParam is the validation function for validating if the current field's value is less than the param's value.
-func IsLtParam(i interface{}, params []string) (bool, error) {
+func IsLtParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isLtParam(v, params)
 }
@@ -740,7 +776,7 @@ func isLteParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLteParam(i interface{}, params []string) (bool, error) {
+func IsLteParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isLteParam(v, params)
 }
@@ -751,7 +787,7 @@ func isSame(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsSame is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsSame(i, a interface{}) (bool, error) {
+func IsSame(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isSame(v, anotherField)
@@ -763,7 +799,7 @@ func isLt(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsLt is the validation function for validating if the current field's value is less than the param's value.
-func IsLt(i, a interface{}) (bool, error) {
+func IsLt(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isLt(v, anotherField)
@@ -775,7 +811,7 @@ func isLte(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLte(i, a interface{}) (bool, error) {
+func IsLte(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isLte(v, anotherField)
@@ -787,7 +823,7 @@ func isGt(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsGt is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGt(i, a interface{}) (bool, error) {
+func IsGt(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isGt(v, anotherField)
@@ -799,7 +835,7 @@ func isGte(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsGte is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGte(i, a interface{}) (bool, error) {
+func IsGte(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isGte(v, anotherField)
@@ -813,26 +849,26 @@ func isDistinct(v reflect.Value) (bool, error) {
 		reflect.Float32, reflect.Float64:
 		return true, nil
 	case reflect.Slice, reflect.Array:
-		m := reflect.MakeMap(reflect.MapOf(v.Type().Elem(), v.Type()))
-
+		// Only keys matter for uniqueness; use a zero-size value type so each
+		// entry stores nothing instead of a full copy of the collection.
+		seen := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Elem(), emptyStructType), v.Len())
 		for i := 0; i < v.Len(); i++ {
-			m.SetMapIndex(v.Index(i), v)
+			seen.SetMapIndex(v.Index(i), emptyStructValue)
 		}
-		return v.Len() == m.Len(), nil
+		return v.Len() == seen.Len(), nil
 	case reflect.Map:
-		m := reflect.MakeMap(reflect.MapOf(v.Type().Elem(), v.Type()))
-
+		seen := reflect.MakeMapWithSize(reflect.MapOf(v.Type().Elem(), emptyStructType), v.Len())
 		for _, k := range v.MapKeys() {
-			m.SetMapIndex(v.MapIndex(k), v)
+			seen.SetMapIndex(v.MapIndex(k), emptyStructValue)
 		}
-		return v.Len() == m.Len(), nil
+		return v.Len() == seen.Len(), nil
 	}
 
 	return false, fmt.Errorf("validator: Distinct unsupported type %T", v.Interface())
 }
 
 // IsDistinct is the validation function for validating an attribute is unique among other values.
-func IsDistinct(i interface{}) bool {
+func IsDistinct(i any) bool {
 	v := reflect.ValueOf(i)
 	valid, _ := isDistinct(v)
 	return valid
@@ -891,7 +927,7 @@ func isMultipleOf(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMultipleOf is the validation function for validating if a value is a multiple of another.
-func IsMultipleOf(i interface{}, params []string) (bool, error) {
+func IsMultipleOf(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMultipleOf(v, params)
 }
@@ -929,7 +965,7 @@ func isMaxDigits(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMaxDigits is the validation function for validating the maximum number of digits.
-func IsMaxDigits(i interface{}, params []string) (bool, error) {
+func IsMaxDigits(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMaxDigits(v, params)
 }
@@ -967,7 +1003,7 @@ func isMinDigits(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMinDigits is the validation function for validating the minimum number of digits.
-func IsMinDigits(i interface{}, params []string) (bool, error) {
+func IsMinDigits(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMinDigits(v, params)
 }
@@ -1014,7 +1050,7 @@ func isDecimalPrecision(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDecimalPrecision is the validation function for validating decimal places.
-func IsDecimalPrecision(i interface{}, params []string) (bool, error) {
+func IsDecimalPrecision(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDecimalPrecision(v, params)
 }
@@ -1039,7 +1075,7 @@ func isContains(v reflect.Value, params []string) (bool, error) {
 			found := false
 			for i := 0; i < v.Len(); i++ {
 				elem := v.Index(i)
-				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Ptr {
+				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Pointer {
 					elem = elem.Elem()
 				}
 				if ToString(elem.Interface()) == param {
@@ -1058,7 +1094,7 @@ func isContains(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsContains is the validation function for validating an array/slice contains specified values.
-func IsContains(i interface{}, params []string) (bool, error) {
+func IsContains(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isContains(v, params)
 }
@@ -1082,7 +1118,7 @@ func isDoesntContain(v reflect.Value, params []string) (bool, error) {
 		for _, param := range params {
 			for i := 0; i < v.Len(); i++ {
 				elem := v.Index(i)
-				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Ptr {
+				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Pointer {
 					elem = elem.Elem()
 				}
 				if ToString(elem.Interface()) == param {
@@ -1097,7 +1133,7 @@ func isDoesntContain(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDoesntContain is the validation function for validating an array/slice does not contain specified values.
-func IsDoesntContain(i interface{}, params []string) (bool, error) {
+func IsDoesntContain(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDoesntContain(v, params)
 }
@@ -1138,21 +1174,37 @@ func IsImage(data []byte) bool {
 
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
-func ValidateStruct(s interface{}) error {
+func ValidateStruct(s any) error {
 	return Default.ValidateStruct(s, nil, nil)
 }
 
+// maxValidationDepth bounds how deep struct recursion may go. It terminates
+// cyclic object graphs (e.g. a tree/linked-list/graph node that points back to
+// an ancestor), which would otherwise recurse forever. The limit is generous;
+// real-world structs nest far shallower.
+const maxValidationDepth = 1000
+
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
-func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) ValidateStruct(s any, jsonNamespace, structNamespace []byte) error {
+	return v.validateStruct(s, jsonNamespace, structNamespace, 0)
+}
+
+// validateStruct is the depth-tracked recursive core of ValidateStruct. depth
+// guards against cyclic references; it carries zero per-call allocation (an int,
+// not a visited set), preserving the allocation-free success path.
+func (v *Validator) validateStruct(s any, jsonNamespace, structNamespace []byte, depth int) error {
 	if s == nil {
 		return nil
+	}
+	if depth > maxValidationDepth {
+		return fmt.Errorf("validator: maximum nesting depth %d exceeded (possible cyclic reference)", maxValidationDepth)
 	}
 
 	var err error
 
 	val := reflect.ValueOf(s)
-	if val.Kind() == reflect.Interface || val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Interface || val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	// we only accept structs
@@ -1160,23 +1212,30 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace
 		return fmt.Errorf("function only accepts structs; got %s", val.Kind())
 	}
 
+	// errs is left nil: the common case is zero errors, and appending from nil
+	// avoids allocating a backing array that a successful validation never uses.
 	var errs Errors
 	fields := cachedTypefields(val.Type())
 
-	// Pre-allocate slice capacity to reduce allocations
-	if len(fields) > 0 {
-		errs = make(Errors, 0, len(fields)/2) // Assume ~50% will have validation errors
-	}
-
 	//nolint:gocritic // Field struct copying is acceptable for validation library performance
 	for _, f := range fields {
-		valuefield := val.Field(f.index[0])
-		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
+		// FieldByIndexErr follows the full index path so promoted fields from
+		// embedded structs resolve correctly; it returns an error (instead of
+		// panicking) when a nil embedded pointer is traversed, in which case the
+		// promoted fields are absent and skipped.
+		valuefield, ferr := val.FieldByIndexErr(f.index)
+		if ferr != nil {
+			continue
+		}
+		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace, depth)
 		if err != nil {
 			if errors, ok := err.(Errors); ok {
 				errs = append(errs, errors...)
 			} else {
 				errs = append(errs, err)
+			}
+			if v.FailFast {
+				break
 			}
 		}
 	}
@@ -1188,13 +1247,23 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace
 	return err
 }
 
-func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Value, jsonNamespace, structNamespace []byte) (resultErr error) {
+func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Value, jsonNamespace, structNamespace []byte, depth int) (resultErr error) {
 	if !value.IsValid() || (f.omitEmpty && Empty(value)) {
 		return nil
 	}
 
-	name := buildFieldName(jsonNamespace, f.nameBytes)
-	structName := buildFieldName(structNamespace, f.structNameBytes)
+	// For top-level fields (no namespace) the name is exactly the cached
+	// f.name/f.structName string, so reuse it instead of allocating a fresh
+	// copy on every field. Only nested fields need the namespace concatenation.
+	// This is the dominant allocation on the validation hot path.
+	name := f.name
+	if len(jsonNamespace) != 0 {
+		name = buildFieldName(jsonNamespace, f.nameBytes)
+	}
+	structName := f.structName
+	if len(structNamespace) != 0 {
+		structName = buildFieldName(structNamespace, f.structNameBytes)
+	}
 
 	// Check for custom type functions or auto-detect types with IsSet()/Value() methods
 	// (e.g., graphql.Omittable[T], sql.NullString). Results are cached per type.
@@ -1213,7 +1282,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 	}
 
 	// Handle pointer and interface dereferencing
-	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+	if value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
 		if err := v.checkRequired(value, f, o, name, structName); err != nil {
 			return err
 		}
@@ -1248,48 +1317,16 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		return nil
 	case reflect.Map:
 		// Validate map-specific rules (without string-specific rules)
-		for _, tag := range f.validTags {
-			handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
-			if err != nil {
-				return err
-			}
-
-			// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-			skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-			if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
-
-			if !skipParamRule {
-				if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-					return err
-				}
-			}
+		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
+			return err
 		}
-		return v.validateMapFields(value, f, jsonNamespace, structNamespace)
+		return v.validateMapFields(value, f, jsonNamespace, structNamespace, depth)
 	case reflect.Slice, reflect.Array:
 		// Validate slice/array-specific rules (without string-specific rules)
-		for _, tag := range f.validTags {
-			handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
-			if err != nil {
-				return err
-			}
-
-			// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-			skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-			if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
-
-			if !skipParamRule {
-				if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-					return err
-				}
-			}
+		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
+			return err
 		}
-		return v.validateSliceFields(value, f, jsonNamespace, structNamespace)
+		return v.validateSliceFields(value, f, jsonNamespace, structNamespace, depth)
 	case reflect.Struct:
 		// Check for decimal.Decimal type - validate it like a numeric type
 		if _, ok := asDecimal(value); ok {
@@ -1306,9 +1343,9 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 			return nil
 		}
 		// Regular struct - recursively validate
-		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
-		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
-		return v.ValidateStruct(value.Interface(), jsonNamespace, structNamespace)
+		jsonNamespace = appendNamespace(jsonNamespace, f.nameBytes)
+		structNamespace = appendNamespace(structNamespace, f.structNameBytes)
+		return v.validateStruct(value.Interface(), jsonNamespace, structNamespace, depth+1)
 	default:
 		// For unsupported types with validation tags, return a FieldError with FuncError
 		if len(f.validTags) > 0 {
@@ -1350,7 +1387,7 @@ func Empty(v reflect.Value) bool {
 		return v.Uint() == 0
 	case reflect.Float32, reflect.Float64:
 		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
+	case reflect.Interface, reflect.Pointer:
 		return v.IsNil()
 	case reflect.Chan, reflect.Func:
 		return v.IsNil()
@@ -1384,7 +1421,7 @@ func isRequired(v reflect.Value) bool {
 }
 
 // IsRequired check value required when anotherField str is a member of the set of strings params
-func IsRequired(i interface{}) bool {
+func IsRequired(i any) bool {
 	v := reflect.ValueOf(i)
 	return isRequired(v)
 }
@@ -1405,7 +1442,7 @@ func isAccepted(v reflect.Value) bool {
 }
 
 // IsAccepted checks if the field is accepted
-func IsAccepted(i interface{}) bool {
+func IsAccepted(i any) bool {
 	v := reflect.ValueOf(i)
 	return isAccepted(v)
 }
@@ -1420,7 +1457,7 @@ func isDeclined(v reflect.Value) bool {
 }
 
 // IsDeclined checks if the field is declined
-func IsDeclined(i interface{}) bool {
+func IsDeclined(i any) bool {
 	v := reflect.ValueOf(i)
 	return isDeclined(v)
 }
@@ -1431,14 +1468,14 @@ func isProhibited(v reflect.Value) bool {
 }
 
 // IsProhibited checks if the field is prohibited (must be empty)
-func IsProhibited(i interface{}) bool {
+func IsProhibited(i any) bool {
 	v := reflect.ValueOf(i)
 	return isProhibited(v)
 }
 
 // isAcceptedIf checks if the field is accepted when another field equals a specific value
 func isAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1455,7 +1492,7 @@ func isAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) 
 
 // isDeclinedIf checks if the field is declined when another field equals a specific value
 func isDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1472,7 +1509,7 @@ func isDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) 
 
 // isProhibitedIf checks if the field is empty when another field equals a specific value
 func isProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1489,7 +1526,7 @@ func isProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error
 
 // isProhibitedUnless checks if the field is empty unless another field equals a specific value
 func isProhibitedUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1510,14 +1547,14 @@ func isMissing(v reflect.Value) bool {
 }
 
 // IsMissing checks if the field is missing
-func IsMissing(i interface{}) bool {
+func IsMissing(i any) bool {
 	v := reflect.ValueOf(i)
 	return isMissing(v)
 }
 
 // isMissingIf checks if the field is missing when another field equals a specific value
 func isMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1534,7 +1571,7 @@ func isMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
 
 // isMissingUnless checks if the field is missing unless another field equals a specific value
 func isMissingUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1640,14 +1677,14 @@ func isPresent(v reflect.Value) bool {
 }
 
 // IsPresent checks if the field is present
-func IsPresent(i interface{}) bool {
+func IsPresent(i any) bool {
 	v := reflect.ValueOf(i)
 	return isPresent(v)
 }
 
 // isPresentIf checks if the field is present (non-empty) when another field equals a specific value
 func isPresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1664,7 +1701,7 @@ func isPresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
 
 // isPresentUnless checks if the field is present (non-empty) unless another field equals a specific value
 func isPresentUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1735,7 +1772,7 @@ func isRequiredArrayKeys(v reflect.Value, keys []string) (bool, error) {
 }
 
 // IsRequiredArrayKeys checks if the map has all the specified keys
-func IsRequiredArrayKeys(i interface{}, keys []string) (bool, error) {
+func IsRequiredArrayKeys(i any, keys []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isRequiredArrayKeys(v, keys)
 }
@@ -1752,7 +1789,7 @@ func isList(v reflect.Value) (bool, error) {
 }
 
 // IsList checks if the value is a list (slice or array)
-func IsList(i interface{}) (bool, error) {
+func IsList(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isList(v)
 }
@@ -1820,7 +1857,7 @@ func isDate(v reflect.Value) (bool, error) {
 }
 
 // IsDate checks if the value is a valid date
-func IsDate(i interface{}) (bool, error) {
+func IsDate(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDate(v)
 }
@@ -1854,7 +1891,7 @@ func isDateFormat(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDateFormat checks if the value matches the given date format
-func IsDateFormat(i interface{}, params []string) (bool, error) {
+func IsDateFormat(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDateFormat(v, params)
 }
@@ -1885,7 +1922,7 @@ func isAfter(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsAfter checks if the date is after the given date
-func IsAfter(i interface{}, params []string) (bool, error) {
+func IsAfter(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isAfter(v, params)
 }
@@ -1916,7 +1953,7 @@ func isAfterOrEqual(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsAfterOrEqual checks if the date is after or equal to the given date
-func IsAfterOrEqual(i interface{}, params []string) (bool, error) {
+func IsAfterOrEqual(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isAfterOrEqual(v, params)
 }
@@ -1947,7 +1984,7 @@ func isBefore(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsBefore checks if the date is before the given date
-func IsBefore(i interface{}, params []string) (bool, error) {
+func IsBefore(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBefore(v, params)
 }
@@ -1978,7 +2015,7 @@ func isBeforeOrEqual(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsBeforeOrEqual checks if the date is before or equal to the given date
-func IsBeforeOrEqual(i interface{}, params []string) (bool, error) {
+func IsBeforeOrEqual(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBeforeOrEqual(v, params)
 }
@@ -1999,7 +2036,7 @@ func isIn(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsIn checks if the value is in the given list
-func IsIn(i interface{}, params []string) (bool, error) {
+func IsIn(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isIn(v, params)
 }
@@ -2020,7 +2057,7 @@ func isNotIn(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsNotIn checks if the value is not in the given list
-func IsNotIn(i interface{}, params []string) (bool, error) {
+func IsNotIn(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isNotIn(v, params)
 }
@@ -2028,7 +2065,7 @@ func IsNotIn(i interface{}, params []string) (bool, error) {
 // isDifferent checks if the value is different from another field
 func isDifferent(v, anotherField reflect.Value) (bool, error) {
 	v = deref(v)
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2040,7 +2077,7 @@ func isDifferent(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsDifferent checks if the value is different from another value
-func IsDifferent(a, b interface{}) (bool, error) {
+func IsDifferent(a, b any) (bool, error) {
 	return isDifferent(reflect.ValueOf(a), reflect.ValueOf(b))
 }
 
@@ -2048,7 +2085,7 @@ func IsDifferent(a, b interface{}) (bool, error) {
 // This is handled specially in the validation loop since it needs to find {field}_confirmation
 func isConfirmed(v, confirmationField reflect.Value) (bool, error) {
 	v = deref(v)
-	if confirmationField.Kind() == reflect.Interface || confirmationField.Kind() == reflect.Ptr {
+	if confirmationField.Kind() == reflect.Interface || confirmationField.Kind() == reflect.Pointer {
 		confirmationField = confirmationField.Elem()
 	}
 
@@ -2074,12 +2111,12 @@ func isJSON(v reflect.Value) (bool, error) {
 		return false, nil
 	}
 
-	var js interface{}
+	var js any
 	return json.Unmarshal([]byte(v.String()), &js) == nil, nil
 }
 
 // IsJSON checks if the value is a valid JSON string
-func IsJSON(i interface{}) (bool, error) {
+func IsJSON(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isJSON(v)
 }
@@ -2109,7 +2146,7 @@ func isRegex(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsRegex checks if the value matches the given regex pattern
-func IsRegex(i interface{}, params []string) (bool, error) {
+func IsRegex(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isRegex(v, params)
 }
@@ -2139,7 +2176,7 @@ func isNotRegex(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsNotRegex checks if the value does not match the given regex pattern
-func IsNotRegex(i interface{}, params []string) (bool, error) {
+func IsNotRegex(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isNotRegex(v, params)
 }
@@ -2170,7 +2207,7 @@ func isBoolean(v reflect.Value) (bool, error) {
 }
 
 // IsBoolean checks if the value is boolean-like
-func IsBoolean(i interface{}) (bool, error) {
+func IsBoolean(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBoolean(v)
 }
@@ -2186,7 +2223,7 @@ func isString(v reflect.Value) (bool, error) {
 }
 
 // IsString checks if the value is a string
-func IsString(i interface{}) (bool, error) {
+func IsString(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isString(v)
 }
@@ -2202,7 +2239,7 @@ func isArray(v reflect.Value) (bool, error) {
 }
 
 // IsArray checks if the value is an array or slice
-func IsArray(i interface{}) (bool, error) {
+func IsArray(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isArray(v)
 }
@@ -2219,19 +2256,19 @@ func isFilled(v reflect.Value) (bool, error) {
 }
 
 // IsFilled checks if the field is not empty when present
-func IsFilled(i interface{}) (bool, error) {
+func IsFilled(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isFilled(v)
 }
 
 // isRequiredIf check value required when anotherField str is a member of the set of strings params
-func isRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+func isRequiredIf(v, anotherField reflect.Value, params []string) (valid bool, matchedValue string, err error) {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
 	if !anotherField.IsValid() {
-		return true, nil
+		return true, "", nil
 	}
 
 	switch anotherField.Kind() {
@@ -2241,32 +2278,25 @@ func isRequiredIf(v, anotherField reflect.Value, params []string, tag *ValidTag)
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		value := ToString(anotherField)
-		if InString(value, params) && Empty(v) && tag != nil {
-			tag.messageParameters = append(
-				tag.messageParameters,
-				messageParameter{
-					Key:   "Value",
-					Value: value,
-				},
-			)
-			return false, nil
+		if InString(value, params) && Empty(v) {
+			return false, value, nil
 		}
 	case reflect.Map, reflect.Slice, reflect.Array:
 		values, err := extractValuesFromCollection(anotherField)
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
-		return checkRequiredIfCondition(v, values, params, tag)
+		return checkRequiredIfCondition(v, values, params)
 	default:
-		return false, fmt.Errorf("validator: RequiredIf unsupported type %T", anotherField.Interface())
+		return false, "", fmt.Errorf("validator: RequiredIf unsupported type %T", anotherField.Interface())
 	}
 
-	return true, nil
+	return true, "", nil
 }
 
 // isRequiredUnless check value required when anotherField str is a member of the set of strings params
 func isRequiredUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2338,6 +2368,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 		var funcError error
 		isError := false
 		var isValid bool
+		var requiredIfValue string
 		switch tag.name {
 		case "required":
 			isError = !isRequired(value)
@@ -2347,7 +2378,7 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 			}
 			anotherField, err := findField(tag.params[0], o)
 			if err == nil && len(tag.params) >= 2 {
-				isValid, funcError = isRequiredIf(value, anotherField, tag.params[1:], tag)
+				isValid, requiredIfValue, funcError = isRequiredIf(value, anotherField, tag.params[1:])
 				if !isValid {
 					isError = true
 				}
@@ -2404,12 +2435,21 @@ func (v *Validator) checkRequired(value reflect.Value, f *field, o reflect.Value
 		}
 
 		if isError {
+			messageParameters := parseValidatorMessageParameters(tag, o)
+			if tag.name == "requiredIf" {
+				// "Value" is the runtime value of the referenced field that
+				// triggered the requirement; built per call, never cached.
+				messageParameters = append(messageParameters, messageParameter{
+					Key:   "Value",
+					Value: requiredIfValue,
+				})
+			}
 			return v.formatsMessages(&FieldError{
 				Name:              name,
 				StructName:        structName,
 				Tag:               tag.name,
 				MessageName:       tag.messageName,
-				MessageParameters: parseValidatorMessageParameters(tag, o),
+				MessageParameters: messageParameters,
 				Attribute:         f.attribute,
 				DefaultAttribute:  f.defaultAttribute,
 				Value:             ToString(value.Interface()),
@@ -2454,7 +2494,9 @@ func isRequiredWithoutAll(otherFields []string, currentField, obj reflect.Value)
 }
 
 func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) MessageParameters {
-	messageParameters := validTag.messageParameters
+	// Copy the cached base params; appending below must never mutate or alias
+	// the shared (cached) tag, since this runs on concurrent validations.
+	messageParameters := append(MessageParameters(nil), validTag.messageParameters...)
 	switch validTag.name {
 	case "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll":
 		first := true
@@ -2478,7 +2520,7 @@ func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) Messag
 			},
 		)
 	case "requiredIf", "requiredUnless", "same":
-		other := getDisplayableAttribute(o, validTag.params[0])
+		other := getDisplayableAttribute(validTag.params[0])
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
@@ -2519,14 +2561,14 @@ func (v *Validator) formatsMessages(fieldError *FieldError) *FieldError {
 }
 
 func replaceAttributes(message, attribute string, messageParameters MessageParameters) string {
-	message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
+	message = strings.ReplaceAll(message, "{{.Attribute}}", attribute)
 	for _, parameter := range messageParameters {
-		message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
+		message = strings.ReplaceAll(message, "{{."+parameter.Key+"}}", parameter.Value)
 	}
 	return message
 }
 
-func getDisplayableAttribute(o reflect.Value, attribute string) string {
+func getDisplayableAttribute(attribute string) string {
 	attributes := strings.Split(attribute, ".")
 	return attributes[len(attributes)-1]
 }
@@ -2535,12 +2577,17 @@ func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 	if v.Kind() != reflect.Struct {
 		return reflect.Value{}, fmt.Errorf("findField: value is not a struct, got %s", v.Kind())
 	}
+	// Fast path: a plain (non-nested) field name is by far the most common case
+	// and avoids the strings.Split allocation on every dependent-rule check.
+	if !strings.Contains(fieldName, ".") {
+		return v.FieldByName(fieldName), nil
+	}
 	fields := strings.Split(fieldName, ".")
 	current := v.FieldByName(fields[0])
 	i := 1
 	if len(fields) > i {
 		for {
-			if current.Kind() == reflect.Interface || current.Kind() == reflect.Ptr {
+			if current.Kind() == reflect.Interface || current.Kind() == reflect.Pointer {
 				current = current.Elem()
 			}
 
@@ -2713,11 +2760,6 @@ func (v *Validator) checkDependentRulesWithStatus(validTag *ValidTag, f *field, 
 	}
 
 	return handled, nil
-}
-
-func (v *Validator) checkDependentRules(validTag *ValidTag, f *field, value, o reflect.Value, name, structName string) error {
-	_, err := v.checkDependentRulesWithStatus(validTag, f, value, o, name, structName)
-	return err
 }
 
 // =============================================================================

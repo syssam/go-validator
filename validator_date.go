@@ -72,33 +72,18 @@ func parseRelativeDate(input string) (time.Time, bool) {
 
 // parseDateParam parses a date parameter, trying relative date first, then static date formats
 func parseDateParam(param string) (time.Time, error) {
-	// Try relative date first
+	// Relative keywords ("today", "tomorrow", "+1 day", ...) are only meaningful
+	// as rule parameters, so try them first.
 	if t, ok := parseRelativeDate(param); ok {
 		return t, nil
 	}
 
-	// Try standard date formats using local timezone (consistent with parseDate in validator.go)
-	formats := []string{
-		"2006-01-02",
-		"2006-01-02 15:04:05",
-		"2006/01/02",
-		"02-01-2006",
-		"01/02/2006",
-	}
-
-	for _, format := range formats {
-		// Use ParseInLocation for formats without timezone to use local time
-		if t, err := time.ParseInLocation(format, param, time.Local); err == nil {
-			return t, nil
-		}
-	}
-
-	// Try RFC3339 which has timezone info
-	if t, err := time.Parse(time.RFC3339, param); err == nil {
-		return t, nil
-	}
-
-	return time.Time{}, errors.New("invalid date format: " + param)
+	// Delegate to parseDate so a date string parses identically whether it is a
+	// field value or a rule parameter. Previously the two used different format
+	// lists, so e.g. "03/04/2006" parsed as Apr 3 as a value but Mar 4 as a
+	// param, silently comparing against the wrong date. The DD/MM vs MM/DD
+	// precedence is now defined in exactly one place: dateFormats.
+	return parseDate(param)
 }
 
 // =============================================================================
