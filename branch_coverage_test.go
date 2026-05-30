@@ -92,6 +92,54 @@ func TestDerefChains(t *testing.T) {
 	}
 }
 
+// TestDateParsesConsistently is a regression test: a date string must parse to
+// the same date whether it appears as a field value (parseDate) or a rule
+// parameter (parseDateParam). They previously used divergent format lists, so
+// "03/04/2006" became Apr 3 in one path and Mar 4 in the other.
+func TestDateParsesConsistently(t *testing.T) {
+	for _, s := range []string{"03/04/2006", "2024-01-15", "2024/01/15", "01/02/2006"} {
+		d1, err1 := parseDate(s)
+		d2, err2 := parseDateParam(s)
+		if err1 != nil || err2 != nil {
+			t.Fatalf("%s: parse error (%v / %v)", s, err1, err2)
+		}
+		if !d1.Equal(d2) {
+			t.Errorf("%s parses inconsistently: value=%s param=%s",
+				s, d1.Format("2006-01-02"), d2.Format("2006-01-02"))
+		}
+	}
+}
+
+// TestOmitemptyNotMatchedAsSubstring is a regression test: a parameter value
+// that merely contains "omitempty" must not flip the field into omitempty mode.
+func TestOmitemptyNotMatchedAsSubstring(t *testing.T) {
+	type S struct {
+		// "omitempty" appears only inside a rule parameter, not as an option.
+		Name string `valid:"required,contains=omitempty"`
+	}
+	// Name is empty: required must fire. With the old strings.Contains check the
+	// field was wrongly treated as omitempty and skipped entirely.
+	if err := ValidateStruct(&S{Name: ""}); err == nil {
+		t.Error("empty required field was skipped — omitempty matched as a substring")
+	}
+}
+
+// TestInterfaceValuedMapOfStructsValidated is a regression test: entries of a
+// map[string]interface{} holding structs must be validated (they were silently
+// skipped because the deref check tested the map's kind, not the entry's).
+func TestInterfaceValuedMapOfStructsValidated(t *testing.T) {
+	type Inner struct {
+		Name string `valid:"required"`
+	}
+	type Outer struct {
+		Items map[string]interface{} `valid:"required"`
+	}
+	err := ValidateStruct(&Outer{Items: map[string]interface{}{"a": Inner{Name: ""}}})
+	if err == nil {
+		t.Error("expected the interface-valued map entry's struct to be validated")
+	}
+}
+
 // TestFailFast verifies the opt-in FailFast option: collect-all by default,
 // stop at the first failing field when enabled.
 func TestFailFast(t *testing.T) {

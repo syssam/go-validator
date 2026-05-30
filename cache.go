@@ -92,7 +92,7 @@ func getFieldName(sf reflect.StructField, f *field) string {
 func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.Type, index []int, validTag string) field {
 	name := getFieldName(sf, f)
 	tagged := sf.Tag.Get("json") != "" && f.isvalidTag(sf.Tag.Get("json"))
-	requiredTags, otherValidTags, defaultAttribute := f.parseTagIntoSlice(validTag, ft)
+	requiredTags, otherValidTags, defaultAttribute, omitEmpty, nullable := f.parseTagIntoSlice(validTag, ft)
 
 	return field{
 		name:             name,
@@ -106,8 +106,8 @@ func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.
 		requiredTags:     requiredTags,
 		validTags:        otherValidTags,
 		typ:              ft,
-		omitEmpty:        strings.Contains(validTag, "omitempty"),
-		nullable:         strings.Contains(validTag, "nullable"),
+		omitEmpty:        omitEmpty,
+		nullable:         nullable,
 	}
 }
 
@@ -196,11 +196,12 @@ func typefields(t reflect.Type) []field {
 	return fields
 }
 
-func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags, string) {
+func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, otherValidTags, string, bool, bool) {
 	options := strings.Split(tag, ",")
 	var otherValidTags otherValidTags
 	var requiredTags requiredTags
 	defaultAttribute := ""
+	var omitEmpty, nullable bool
 
 	for _, option := range options {
 		option = strings.TrimSpace(option)
@@ -218,8 +219,14 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 				defaultAttribute = tag[1]
 			}
 			continue
-		case "omitempty", "nullable":
-			// Meta-rules that are handled separately, not as validators
+		case "omitempty":
+			// Meta-rule handled separately, not as a validator. Detected here
+			// (exact option match) rather than via strings.Contains on the raw
+			// tag, which would false-positive on a param value.
+			omitEmpty = true
+			continue
+		case "nullable":
+			nullable = true
 			continue
 		case "required", "requiredIf", "requiredUnless", "requiredWith", "requiredWithAll", "requiredWithout", "requiredWithoutAll", "requiredIfAccepted", "requiredIfDeclined":
 			messageParameters, _ := f.parseMessageParameterIntoSlice(tag[0], params...)
@@ -241,7 +248,7 @@ func (f *field) parseTagIntoSlice(tag string, ft reflect.Type) (requiredTags, ot
 		})
 	}
 
-	return requiredTags, otherValidTags, defaultAttribute
+	return requiredTags, otherValidTags, defaultAttribute, omitEmpty, nullable
 }
 
 func (f *field) isvalidTag(s string) bool {

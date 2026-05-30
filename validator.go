@@ -555,7 +555,11 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 	for _, k := range sv {
 		var err error
 		item := value.MapIndex(k)
-		if value.Kind() == reflect.Interface {
+		// Deref interface-valued map entries (e.g. map[string]interface{} of
+		// structs). This checks item, not value: value is always the map, so
+		// the previous value.Kind()==Interface check never fired and such
+		// entries were silently skipped — inconsistent with validateSliceFields.
+		if item.Kind() == reflect.Interface {
 			item = item.Elem()
 		}
 
@@ -2539,6 +2543,11 @@ func getDisplayableAttribute(attribute string) string {
 func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 	if v.Kind() != reflect.Struct {
 		return reflect.Value{}, fmt.Errorf("findField: value is not a struct, got %s", v.Kind())
+	}
+	// Fast path: a plain (non-nested) field name is by far the most common case
+	// and avoids the strings.Split allocation on every dependent-rule check.
+	if !strings.Contains(fieldName, ".") {
+		return v.FieldByName(fieldName), nil
 	}
 	fields := strings.Split(fieldName, ".")
 	current := v.FieldByName(fields[0])
