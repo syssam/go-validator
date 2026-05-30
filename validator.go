@@ -1219,7 +1219,14 @@ func (v *Validator) validateStruct(s any, jsonNamespace, structNamespace []byte,
 
 	//nolint:gocritic // Field struct copying is acceptable for validation library performance
 	for _, f := range fields {
-		valuefield := val.Field(f.index[0])
+		// FieldByIndexErr follows the full index path so promoted fields from
+		// embedded structs resolve correctly; it returns an error (instead of
+		// panicking) when a nil embedded pointer is traversed, in which case the
+		// promoted fields are absent and skipped.
+		valuefield, ferr := val.FieldByIndexErr(f.index)
+		if ferr != nil {
+			continue
+		}
 		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace, depth)
 		if err != nil {
 			if errors, ok := err.(Errors); ok {

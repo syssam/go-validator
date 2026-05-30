@@ -42,6 +42,57 @@ func TestNoDuplicateErrors(t *testing.T) {
 	}
 }
 
+type embBase struct {
+	ID string `valid:"required"`
+}
+type embMid struct {
+	Code string `valid:"required"`
+}
+
+// TestEmbeddedStructFieldsValidated is a regression test: promoted fields from
+// embedded (anonymous) structs were never collected — line 130 returned early
+// for the untagged embedded field — so their rules silently never fired.
+func TestEmbeddedStructFieldsValidated(t *testing.T) {
+	type User struct {
+		embBase        // value-embedded
+		*embMid        // pointer-embedded
+		Name    string `valid:"required"`
+	}
+
+	// All promoted required fields empty -> all must be reported.
+	err := ValidateStruct(&User{embMid: &embMid{}})
+	if err == nil {
+		t.Fatal("expected errors for empty promoted fields")
+	}
+	got := map[string]bool{}
+	for _, e := range err.(Errors) {
+		if fe, ok := e.(*FieldError); ok {
+			got[fe.Name] = true
+		}
+	}
+	for _, want := range []string{"ID", "Code", "Name"} {
+		if !got[want] {
+			t.Errorf("expected promoted field %q to be validated; got %v", want, got)
+		}
+	}
+
+	// nil pointer-embedded struct must not panic; its fields are simply absent.
+	err = ValidateStruct(&User{})
+	if err == nil {
+		t.Fatal("expected errors")
+	}
+	for _, e := range err.(Errors) {
+		if fe, ok := e.(*FieldError); ok && fe.Name == "Code" {
+			t.Error("Code should be skipped when its embedded *struct is nil")
+		}
+	}
+
+	// Fully valid -> no error.
+	if err := ValidateStruct(&User{embBase: embBase{ID: "x"}, embMid: &embMid{Code: "c"}, Name: "n"}); err != nil {
+		t.Errorf("unexpected error for valid embedded struct: %v", err)
+	}
+}
+
 type linkNode struct {
 	Name string    `valid:"required"`
 	Next *linkNode `valid:"required"`
