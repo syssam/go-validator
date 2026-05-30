@@ -555,7 +555,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 	for _, k := range sv {
 		var err error
 		item := value.MapIndex(k)
-		// Deref interface-valued map entries (e.g. map[string]interface{} of
+		// Deref interface-valued map entries (e.g. map[string]any of
 		// structs). This checks item, not value: value is always the map, so
 		// the previous value.Kind()==Interface check never fired and such
 		// entries were silently skipped — inconsistent with validateSliceFields.
@@ -599,7 +599,7 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 }
 
 // IsBetween check The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
-func IsBetween(i interface{}, params []string) (bool, error) {
+func IsBetween(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBetween(v, params)
 }
@@ -641,7 +641,7 @@ func isDigitsBetween(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDigitsBetween check The field under validation must have a length between the given min and max.
-func IsDigitsBetween(i interface{}, params []string) (bool, error) {
+func IsDigitsBetween(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDigitsBetween(v, params)
 }
@@ -710,7 +710,7 @@ func isSize(v reflect.Value, param []string) (bool, error) {
 // For string data, value corresponds to the number of characters.
 // For numeric data, value corresponds to a given integer value.
 // For an array | map | slice, size corresponds to the count of the array | map | slice.
-func IsSize(i interface{}, params []string) (bool, error) {
+func IsSize(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isSize(v, params)
 }
@@ -721,7 +721,7 @@ func isMax(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMax is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsMax(i interface{}, params []string) (bool, error) {
+func IsMax(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMax(v, params)
 }
@@ -732,7 +732,7 @@ func isMin(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMin is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsMin(i interface{}, params []string) (bool, error) {
+func IsMin(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMin(v, params)
 }
@@ -743,7 +743,7 @@ func isGtParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsGtParam is the validation function for validating if the current field's value is greater than the param's value.
-func IsGtParam(i interface{}, params []string) (bool, error) {
+func IsGtParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isGtParam(v, params)
 }
@@ -754,7 +754,7 @@ func isGteParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsGteParam is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsGteParam(i interface{}, params []string) (bool, error) {
+func IsGteParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isGteParam(v, params)
 }
@@ -765,7 +765,7 @@ func isLtParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsLtParam is the validation function for validating if the current field's value is less than the param's value.
-func IsLtParam(i interface{}, params []string) (bool, error) {
+func IsLtParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isLtParam(v, params)
 }
@@ -776,7 +776,7 @@ func isLteParam(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsLteParam is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLteParam(i interface{}, params []string) (bool, error) {
+func IsLteParam(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isLteParam(v, params)
 }
@@ -787,7 +787,7 @@ func isSame(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsSame is the validation function for validating if the current field's value is greater than or equal to the param's value.
-func IsSame(i, a interface{}) (bool, error) {
+func IsSame(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isSame(v, anotherField)
@@ -799,7 +799,7 @@ func isLt(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsLt is the validation function for validating if the current field's value is less than the param's value.
-func IsLt(i, a interface{}) (bool, error) {
+func IsLt(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isLt(v, anotherField)
@@ -811,7 +811,7 @@ func isLte(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsLte is the validation function for validating if the current field's value is less than or equal to the param's value.
-func IsLte(i, a interface{}) (bool, error) {
+func IsLte(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isLte(v, anotherField)
@@ -823,7 +823,7 @@ func isGt(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsGt is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGt(i, a interface{}) (bool, error) {
+func IsGt(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isGt(v, anotherField)
@@ -835,7 +835,7 @@ func isGte(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsGte is the validation function for validating if the current field's value is greater than to the param's value.
-func IsGte(i, a interface{}) (bool, error) {
+func IsGte(i, a any) (bool, error) {
 	v := reflect.ValueOf(i)
 	anotherField := reflect.ValueOf(a)
 	return isGte(v, anotherField)
@@ -868,7 +868,7 @@ func isDistinct(v reflect.Value) (bool, error) {
 }
 
 // IsDistinct is the validation function for validating an attribute is unique among other values.
-func IsDistinct(i interface{}) bool {
+func IsDistinct(i any) bool {
 	v := reflect.ValueOf(i)
 	valid, _ := isDistinct(v)
 	return valid
@@ -927,7 +927,7 @@ func isMultipleOf(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMultipleOf is the validation function for validating if a value is a multiple of another.
-func IsMultipleOf(i interface{}, params []string) (bool, error) {
+func IsMultipleOf(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMultipleOf(v, params)
 }
@@ -965,7 +965,7 @@ func isMaxDigits(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMaxDigits is the validation function for validating the maximum number of digits.
-func IsMaxDigits(i interface{}, params []string) (bool, error) {
+func IsMaxDigits(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMaxDigits(v, params)
 }
@@ -1003,7 +1003,7 @@ func isMinDigits(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsMinDigits is the validation function for validating the minimum number of digits.
-func IsMinDigits(i interface{}, params []string) (bool, error) {
+func IsMinDigits(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isMinDigits(v, params)
 }
@@ -1050,7 +1050,7 @@ func isDecimalPrecision(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDecimalPrecision is the validation function for validating decimal places.
-func IsDecimalPrecision(i interface{}, params []string) (bool, error) {
+func IsDecimalPrecision(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDecimalPrecision(v, params)
 }
@@ -1094,7 +1094,7 @@ func isContains(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsContains is the validation function for validating an array/slice contains specified values.
-func IsContains(i interface{}, params []string) (bool, error) {
+func IsContains(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isContains(v, params)
 }
@@ -1133,7 +1133,7 @@ func isDoesntContain(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDoesntContain is the validation function for validating an array/slice does not contain specified values.
-func IsDoesntContain(i interface{}, params []string) (bool, error) {
+func IsDoesntContain(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDoesntContain(v, params)
 }
@@ -1174,13 +1174,13 @@ func IsImage(data []byte) bool {
 
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
-func ValidateStruct(s interface{}) error {
+func ValidateStruct(s any) error {
 	return Default.ValidateStruct(s, nil, nil)
 }
 
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
-func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) ValidateStruct(s any, jsonNamespace, structNamespace []byte) error {
 	if s == nil {
 		return nil
 	}
@@ -1388,7 +1388,7 @@ func isRequired(v reflect.Value) bool {
 }
 
 // IsRequired check value required when anotherField str is a member of the set of strings params
-func IsRequired(i interface{}) bool {
+func IsRequired(i any) bool {
 	v := reflect.ValueOf(i)
 	return isRequired(v)
 }
@@ -1409,7 +1409,7 @@ func isAccepted(v reflect.Value) bool {
 }
 
 // IsAccepted checks if the field is accepted
-func IsAccepted(i interface{}) bool {
+func IsAccepted(i any) bool {
 	v := reflect.ValueOf(i)
 	return isAccepted(v)
 }
@@ -1424,7 +1424,7 @@ func isDeclined(v reflect.Value) bool {
 }
 
 // IsDeclined checks if the field is declined
-func IsDeclined(i interface{}) bool {
+func IsDeclined(i any) bool {
 	v := reflect.ValueOf(i)
 	return isDeclined(v)
 }
@@ -1435,7 +1435,7 @@ func isProhibited(v reflect.Value) bool {
 }
 
 // IsProhibited checks if the field is prohibited (must be empty)
-func IsProhibited(i interface{}) bool {
+func IsProhibited(i any) bool {
 	v := reflect.ValueOf(i)
 	return isProhibited(v)
 }
@@ -1514,7 +1514,7 @@ func isMissing(v reflect.Value) bool {
 }
 
 // IsMissing checks if the field is missing
-func IsMissing(i interface{}) bool {
+func IsMissing(i any) bool {
 	v := reflect.ValueOf(i)
 	return isMissing(v)
 }
@@ -1644,7 +1644,7 @@ func isPresent(v reflect.Value) bool {
 }
 
 // IsPresent checks if the field is present
-func IsPresent(i interface{}) bool {
+func IsPresent(i any) bool {
 	v := reflect.ValueOf(i)
 	return isPresent(v)
 }
@@ -1739,7 +1739,7 @@ func isRequiredArrayKeys(v reflect.Value, keys []string) (bool, error) {
 }
 
 // IsRequiredArrayKeys checks if the map has all the specified keys
-func IsRequiredArrayKeys(i interface{}, keys []string) (bool, error) {
+func IsRequiredArrayKeys(i any, keys []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isRequiredArrayKeys(v, keys)
 }
@@ -1756,7 +1756,7 @@ func isList(v reflect.Value) (bool, error) {
 }
 
 // IsList checks if the value is a list (slice or array)
-func IsList(i interface{}) (bool, error) {
+func IsList(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isList(v)
 }
@@ -1824,7 +1824,7 @@ func isDate(v reflect.Value) (bool, error) {
 }
 
 // IsDate checks if the value is a valid date
-func IsDate(i interface{}) (bool, error) {
+func IsDate(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDate(v)
 }
@@ -1858,7 +1858,7 @@ func isDateFormat(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsDateFormat checks if the value matches the given date format
-func IsDateFormat(i interface{}, params []string) (bool, error) {
+func IsDateFormat(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isDateFormat(v, params)
 }
@@ -1889,7 +1889,7 @@ func isAfter(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsAfter checks if the date is after the given date
-func IsAfter(i interface{}, params []string) (bool, error) {
+func IsAfter(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isAfter(v, params)
 }
@@ -1920,7 +1920,7 @@ func isAfterOrEqual(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsAfterOrEqual checks if the date is after or equal to the given date
-func IsAfterOrEqual(i interface{}, params []string) (bool, error) {
+func IsAfterOrEqual(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isAfterOrEqual(v, params)
 }
@@ -1951,7 +1951,7 @@ func isBefore(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsBefore checks if the date is before the given date
-func IsBefore(i interface{}, params []string) (bool, error) {
+func IsBefore(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBefore(v, params)
 }
@@ -1982,7 +1982,7 @@ func isBeforeOrEqual(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsBeforeOrEqual checks if the date is before or equal to the given date
-func IsBeforeOrEqual(i interface{}, params []string) (bool, error) {
+func IsBeforeOrEqual(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBeforeOrEqual(v, params)
 }
@@ -2003,7 +2003,7 @@ func isIn(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsIn checks if the value is in the given list
-func IsIn(i interface{}, params []string) (bool, error) {
+func IsIn(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isIn(v, params)
 }
@@ -2024,7 +2024,7 @@ func isNotIn(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsNotIn checks if the value is not in the given list
-func IsNotIn(i interface{}, params []string) (bool, error) {
+func IsNotIn(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isNotIn(v, params)
 }
@@ -2044,7 +2044,7 @@ func isDifferent(v, anotherField reflect.Value) (bool, error) {
 }
 
 // IsDifferent checks if the value is different from another value
-func IsDifferent(a, b interface{}) (bool, error) {
+func IsDifferent(a, b any) (bool, error) {
 	return isDifferent(reflect.ValueOf(a), reflect.ValueOf(b))
 }
 
@@ -2078,12 +2078,12 @@ func isJSON(v reflect.Value) (bool, error) {
 		return false, nil
 	}
 
-	var js interface{}
+	var js any
 	return json.Unmarshal([]byte(v.String()), &js) == nil, nil
 }
 
 // IsJSON checks if the value is a valid JSON string
-func IsJSON(i interface{}) (bool, error) {
+func IsJSON(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isJSON(v)
 }
@@ -2113,7 +2113,7 @@ func isRegex(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsRegex checks if the value matches the given regex pattern
-func IsRegex(i interface{}, params []string) (bool, error) {
+func IsRegex(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isRegex(v, params)
 }
@@ -2143,7 +2143,7 @@ func isNotRegex(v reflect.Value, params []string) (bool, error) {
 }
 
 // IsNotRegex checks if the value does not match the given regex pattern
-func IsNotRegex(i interface{}, params []string) (bool, error) {
+func IsNotRegex(i any, params []string) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isNotRegex(v, params)
 }
@@ -2174,7 +2174,7 @@ func isBoolean(v reflect.Value) (bool, error) {
 }
 
 // IsBoolean checks if the value is boolean-like
-func IsBoolean(i interface{}) (bool, error) {
+func IsBoolean(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isBoolean(v)
 }
@@ -2190,7 +2190,7 @@ func isString(v reflect.Value) (bool, error) {
 }
 
 // IsString checks if the value is a string
-func IsString(i interface{}) (bool, error) {
+func IsString(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isString(v)
 }
@@ -2206,7 +2206,7 @@ func isArray(v reflect.Value) (bool, error) {
 }
 
 // IsArray checks if the value is an array or slice
-func IsArray(i interface{}) (bool, error) {
+func IsArray(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isArray(v)
 }
@@ -2223,7 +2223,7 @@ func isFilled(v reflect.Value) (bool, error) {
 }
 
 // IsFilled checks if the field is not empty when present
-func IsFilled(i interface{}) (bool, error) {
+func IsFilled(i any) (bool, error) {
 	v := reflect.ValueOf(i)
 	return isFilled(v)
 }

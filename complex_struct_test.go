@@ -6,10 +6,10 @@ import (
 
 // Test complex nested struct validation
 type ComplexNestedStruct struct {
-	User   UserInfo    `valid:"required"`
-	Config ConfigInfo  `valid:"required"`
-	Items  []ItemInfo  `valid:"required,distinct"`
-	Meta   interface{} // Interface field
+	User   UserInfo   `valid:"required"`
+	Config ConfigInfo `valid:"required"`
+	Items  []ItemInfo `valid:"required,distinct"`
+	Meta   any        // Interface field
 }
 
 type UserInfo struct {
@@ -63,7 +63,7 @@ func TestComplexStructValidation(t *testing.T) {
 					{ID: "item1", Value: "value1"},
 					{ID: "item2", Value: "value2"},
 				},
-				Meta: map[string]interface{}{"key": "value"},
+				Meta: map[string]any{"key": "value"},
 			},
 			true,
 		},

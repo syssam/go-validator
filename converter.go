@@ -7,7 +7,7 @@ import (
 )
 
 // ToString convert the input to a string with optimized fast paths.
-func ToString(obj interface{}) string {
+func ToString(obj any) string {
 	// Fast path for common types to avoid fmt.Sprintf overhead
 	switch v := obj.(type) {
 	case string:
@@ -47,7 +47,7 @@ func ToBool(str string) bool {
 }
 
 // ToInt convert the input string or any int type to an integer type 64, or 0 if the input is not an integer.
-func ToInt(value interface{}) (res int64, err error) {
+func ToInt(value any) (res int64, err error) {
 	switch v := value.(type) {
 	case int:
 		return int64(v), nil

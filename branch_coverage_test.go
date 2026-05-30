@@ -85,7 +85,7 @@ func TestDerefChains(t *testing.T) {
 	}
 
 	// interface wrapping a pointer.
-	var iface interface{} = p
+	var iface any = p
 	gotIface := deref(reflect.ValueOf(&iface).Elem())
 	if gotIface.Kind() != reflect.String || gotIface.String() != "value" {
 		t.Errorf("deref(interface{*string}) = %v (%s), want \"value\"", gotIface, gotIface.Kind())
@@ -125,16 +125,16 @@ func TestOmitemptyNotMatchedAsSubstring(t *testing.T) {
 }
 
 // TestInterfaceValuedMapOfStructsValidated is a regression test: entries of a
-// map[string]interface{} holding structs must be validated (they were silently
+// map[string]any holding structs must be validated (they were silently
 // skipped because the deref check tested the map's kind, not the entry's).
 func TestInterfaceValuedMapOfStructsValidated(t *testing.T) {
 	type Inner struct {
 		Name string `valid:"required"`
 	}
 	type Outer struct {
-		Items map[string]interface{} `valid:"required"`
+		Items map[string]any `valid:"required"`
 	}
-	err := ValidateStruct(&Outer{Items: map[string]interface{}{"a": Inner{Name: ""}}})
+	err := ValidateStruct(&Outer{Items: map[string]any{"a": Inner{Name: ""}}})
 	if err == nil {
 		t.Error("expected the interface-valued map entry's struct to be validated")
 	}

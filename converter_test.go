@@ -7,7 +7,7 @@ import (
 
 func TestToString(t *testing.T) {
 	tests := []struct {
-		input    interface{}
+		input    any
 		expected string
 	}{
 		{"hello", "hello"},
@@ -82,7 +82,7 @@ func TestToBool(t *testing.T) {
 
 func TestToInt(t *testing.T) {
 	tests := []struct {
-		input       interface{}
+		input       any
 		expected    int64
 		expectError bool
 	}{

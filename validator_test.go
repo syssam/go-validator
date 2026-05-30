@@ -180,7 +180,7 @@ func TestRequiredUnless(t *testing.T) {
 	}
 
 	var tests = []struct {
-		param    interface{}
+		param    any
 		expected bool
 	}{
 		{RequiredUnlessString{}, false},
@@ -677,7 +677,7 @@ func TestErrorHandling(t *testing.T) {
 func TestUnsupportedTypeErrors(t *testing.T) {
 	tests := []struct {
 		name  string
-		input interface{}
+		input any
 		field string
 	}{
 		{
@@ -1262,7 +1262,7 @@ func TestAdditionalCoverage(t *testing.T) {
 		}
 
 		// Test interface
-		var nilInterface interface{}
+		var nilInterface any
 		if !Empty(reflect.ValueOf(&nilInterface).Elem()) {
 			t.Error("Expected nil interface to be considered empty")
 		}
@@ -1507,10 +1507,10 @@ func TestEdgeCases(t *testing.T) {
 		}
 	})
 
-	// Test validation with interface{}
+	// Test validation with any
 	t.Run("InterfaceField", func(t *testing.T) {
 		type TestStruct struct {
-			Field interface{} `valid:"required"`
+			Field any `valid:"required"`
 		}
 
 		err := ValidateStruct(TestStruct{Field: "test"})
@@ -1613,7 +1613,7 @@ func TestCompareUint64(t *testing.T) {
 func TestValidateBetweenErrorCases(t *testing.T) {
 	tests := []struct {
 		name      string
-		value     interface{}
+		value     any
 		params    []string
 		expectErr bool
 	}{
@@ -1660,7 +1660,7 @@ func TestValidateBetweenErrorCases(t *testing.T) {
 func TestValidateBetweenAllNumericTypes(t *testing.T) {
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		params   []string
 		expected bool
 	}{
@@ -1734,11 +1734,11 @@ func TestBasicStringValidationFunctions(t *testing.T) {
 	}
 
 	// Test ValidateDistinct
-	if !ValidateDistinct([]interface{}{"a", "b", "c"}) {
+	if !ValidateDistinct([]any{"a", "b", "c"}) {
 		t.Error("Expected distinct values to validate")
 	}
 
-	if ValidateDistinct([]interface{}{"a", "b", "a"}) {
+	if ValidateDistinct([]any{"a", "b", "a"}) {
 		t.Error("Expected duplicate values to fail validation")
 	}
 
@@ -2064,7 +2064,7 @@ func TestNotRegexValidation(t *testing.T) {
 // =============================================================================
 
 type BooleanValidationStruct struct {
-	Active interface{} `valid:"boolean"`
+	Active any `valid:"boolean"`
 }
 
 type ArrayValidationStruct struct {

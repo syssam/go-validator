@@ -16,7 +16,7 @@ type DefaultValidator struct {
 var _ binding.StructValidator = &DefaultValidator{}
 
 // ValidateStruct return error
-func (v *DefaultValidator) ValidateStruct(obj interface{}) error {
+func (v *DefaultValidator) ValidateStruct(obj any) error {
 	v.lazyinit()
 	if err := validator.ValidateStruct(obj); err != nil {
 		return error(err)
@@ -25,7 +25,7 @@ func (v *DefaultValidator) ValidateStruct(obj interface{}) error {
 }
 
 // Engine return v.validate
-func (v *DefaultValidator) Engine() interface{} {
+func (v *DefaultValidator) Engine() any {
 	v.lazyinit()
 	return v.validate
 }
