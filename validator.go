@@ -1229,8 +1229,18 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		return nil
 	}
 
-	name := buildFieldName(jsonNamespace, f.nameBytes)
-	structName := buildFieldName(structNamespace, f.structNameBytes)
+	// For top-level fields (no namespace) the name is exactly the cached
+	// f.name/f.structName string, so reuse it instead of allocating a fresh
+	// copy on every field. Only nested fields need the namespace concatenation.
+	// This is the dominant allocation on the validation hot path.
+	name := f.name
+	if len(jsonNamespace) != 0 {
+		name = buildFieldName(jsonNamespace, f.nameBytes)
+	}
+	structName := f.structName
+	if len(structNamespace) != 0 {
+		structName = buildFieldName(structNamespace, f.structNameBytes)
+	}
 
 	// Check for custom type functions or auto-detect types with IsSet()/Value() methods
 	// (e.g., graphql.Omittable[T], sql.NullString). Results are cached per type.
