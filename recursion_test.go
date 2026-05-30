@@ -93,6 +93,35 @@ func TestEmbeddedStructFieldsValidated(t *testing.T) {
 	}
 }
 
+type nestedAddr struct {
+	Street string `valid:"required"`
+}
+
+// TestUntaggedNestedStructsValidated verifies untagged nested struct and
+// pointer-to-struct fields are validated recursively (previously they were
+// silently skipped unless the field itself carried a valid tag).
+func TestUntaggedNestedStructsValidated(t *testing.T) {
+	type ByValue struct{ Addr nestedAddr }
+	if err := ValidateStruct(&ByValue{Addr: nestedAddr{Street: ""}}); err == nil {
+		t.Error("untagged named nested struct: inner required field not validated")
+	}
+
+	type ByPtr struct{ Addr *nestedAddr }
+	if err := ValidateStruct(&ByPtr{Addr: &nestedAddr{Street: ""}}); err == nil {
+		t.Error("untagged *struct: inner required field not validated")
+	}
+
+	// nil pointer-to-struct must be skipped without a panic or error.
+	if err := ValidateStruct(&ByPtr{}); err != nil {
+		t.Errorf("nil *struct should be skipped, got %v", err)
+	}
+
+	// Valid inner -> no error.
+	if err := ValidateStruct(&ByValue{Addr: nestedAddr{Street: "x"}}); err != nil {
+		t.Errorf("valid nested struct should pass, got %v", err)
+	}
+}
+
 type linkNode struct {
 	Name string    `valid:"required"`
 	Next *linkNode `valid:"required"`

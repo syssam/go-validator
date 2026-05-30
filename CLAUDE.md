@@ -100,6 +100,18 @@ if err != nil {
 }
 ```
 
+### Nested, Embedded, and Recursive Structs
+
+- **Nested structs** (named or pointer) are validated **recursively and
+  automatically** — a field no longer needs its own `valid` tag for its inner
+  fields to be checked. `time.Time`/`decimal.Decimal` are treated as scalar
+  types, not recursed into.
+- **Embedded (anonymous) structs** have their promoted fields validated as if
+  declared on the parent. A nil embedded pointer is skipped (no panic).
+- **Cyclic references** (a node pointing back to an ancestor) terminate via a
+  depth guard (`maxValidationDepth`) that returns an error instead of looping
+  forever. Validation is linear in the number of fields/elements.
+
 ### Fail-Fast vs Collect-All
 
 By default the validator collects every error. Set `FailFast` on a `Validator`

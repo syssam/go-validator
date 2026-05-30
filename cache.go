@@ -132,12 +132,15 @@ func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int,
 		ft = ft.Elem()
 	}
 
-	// Skip untagged fields that are neither collections (whose elements may need
-	// validation) nor embedded structs (whose promoted fields must be explored).
-	// Embedded structs carry no valid tag of their own, so they must be exempt
-	// here or their promoted fields are never collected.
-	isEmbeddedStruct := sf.Anonymous && ft.Kind() == reflect.Struct
-	if validTag == "" && ft.Kind() != reflect.Slice && ft.Kind() != reflect.Array && !isEmbeddedStruct {
+	// Skip an untagged field only when it cannot contain anything to validate.
+	// Collections (their elements), structs (nested/embedded fields), and
+	// pointers-to-struct (ft was already dereferenced above) are kept so their
+	// contents are validated recursively — matching how most validators treat
+	// nested data, and consistent with embedded-struct promotion.
+	if validTag == "" &&
+		ft.Kind() != reflect.Slice &&
+		ft.Kind() != reflect.Array &&
+		ft.Kind() != reflect.Struct {
 		return
 	}
 
