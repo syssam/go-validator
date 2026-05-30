@@ -7,11 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> **Version note:** this release contains behavior changes (see _Changed_). They
-> stem from fixing latent bugs, but they alter observable output. Decide between
-> a minor bump (`v1.5.0`) with the notes below, or a major bump (`v2.0.0`,
-> requiring the `/v2` module path) for strict SemVer. The notes below assume
-> `v1.5.0`.
+## [1.5.0] - 2026-05-30
+
+> **Heads-up:** this release contains behavior changes (see _Changed_). They stem
+> from fixing latent bugs but alter observable output — review before upgrading.
 
 ### Added
 - `Validator.FailFast` — opt-in flag to stop at the first failing field and
