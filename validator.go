@@ -545,7 +545,7 @@ func (v *Validator) validateCustomTypeRules(tags otherValidTags, value reflect.V
 }
 
 // isMapFields validates map structure and each element
-func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte, depth int) error {
 	if value.Type().Key().Kind() != reflect.String {
 		return &UnsupportedTypeError{value.Type()}
 	}
@@ -567,7 +567,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 			key := []byte(k.String())
 			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), key)
 			newstructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), key)
-			err = v.ValidateStruct(item.Interface(), newJSONNamespace, newstructNamespace)
+			err = v.validateStruct(item.Interface(), newJSONNamespace, newstructNamespace, depth+1)
 			if err != nil {
 				return err
 			}
@@ -577,7 +577,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 }
 
 // isSliceFields validates slice/array structure and each element
-func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte) error {
+func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNamespace, structNamespace []byte, depth int) error {
 	for i := 0; i < value.Len(); i++ {
 		var err error
 		item := value.Index(i)
@@ -589,7 +589,7 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 			index := []byte(strconv.Itoa(i))
 			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), index)
 			newStructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), index)
-			err = v.ValidateStruct(value.Index(i).Interface(), newJSONNamespace, newStructNamespace)
+			err = v.validateStruct(value.Index(i).Interface(), newJSONNamespace, newStructNamespace, depth+1)
 			if err != nil {
 				return err
 			}
@@ -1178,11 +1178,27 @@ func ValidateStruct(s any) error {
 	return Default.ValidateStruct(s, nil, nil)
 }
 
+// maxValidationDepth bounds how deep struct recursion may go. It terminates
+// cyclic object graphs (e.g. a tree/linked-list/graph node that points back to
+// an ancestor), which would otherwise recurse forever. The limit is generous;
+// real-world structs nest far shallower.
+const maxValidationDepth = 1000
+
 // ValidateStruct use tags for fields.
 // result will be equal to `false` if there are any errors.
 func (v *Validator) ValidateStruct(s any, jsonNamespace, structNamespace []byte) error {
+	return v.validateStruct(s, jsonNamespace, structNamespace, 0)
+}
+
+// validateStruct is the depth-tracked recursive core of ValidateStruct. depth
+// guards against cyclic references; it carries zero per-call allocation (an int,
+// not a visited set), preserving the allocation-free success path.
+func (v *Validator) validateStruct(s any, jsonNamespace, structNamespace []byte, depth int) error {
 	if s == nil {
 		return nil
+	}
+	if depth > maxValidationDepth {
+		return fmt.Errorf("validator: maximum nesting depth %d exceeded (possible cyclic reference)", maxValidationDepth)
 	}
 
 	var err error
@@ -1204,7 +1220,7 @@ func (v *Validator) ValidateStruct(s any, jsonNamespace, structNamespace []byte)
 	//nolint:gocritic // Field struct copying is acceptable for validation library performance
 	for _, f := range fields {
 		valuefield := val.Field(f.index[0])
-		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace)
+		err := v.newTypeValidator(valuefield, &f, val, jsonNamespace, structNamespace, depth)
 		if err != nil {
 			if errors, ok := err.(Errors); ok {
 				errs = append(errs, errors...)
@@ -1224,7 +1240,7 @@ func (v *Validator) ValidateStruct(s any, jsonNamespace, structNamespace []byte)
 	return err
 }
 
-func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Value, jsonNamespace, structNamespace []byte) (resultErr error) {
+func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Value, jsonNamespace, structNamespace []byte, depth int) (resultErr error) {
 	if !value.IsValid() || (f.omitEmpty && Empty(value)) {
 		return nil
 	}
@@ -1297,13 +1313,13 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
 			return err
 		}
-		return v.validateMapFields(value, f, jsonNamespace, structNamespace)
+		return v.validateMapFields(value, f, jsonNamespace, structNamespace, depth)
 	case reflect.Slice, reflect.Array:
 		// Validate slice/array-specific rules (without string-specific rules)
 		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
 			return err
 		}
-		return v.validateSliceFields(value, f, jsonNamespace, structNamespace)
+		return v.validateSliceFields(value, f, jsonNamespace, structNamespace, depth)
 	case reflect.Struct:
 		// Check for decimal.Decimal type - validate it like a numeric type
 		if _, ok := asDecimal(value); ok {
@@ -1322,7 +1338,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		// Regular struct - recursively validate
 		jsonNamespace = appendNamespace(jsonNamespace, f.nameBytes)
 		structNamespace = appendNamespace(structNamespace, f.structNameBytes)
-		return v.ValidateStruct(value.Interface(), jsonNamespace, structNamespace)
+		return v.validateStruct(value.Interface(), jsonNamespace, structNamespace, depth+1)
 	default:
 		// For unsupported types with validation tags, return a FieldError with FuncError
 		if len(f.validTags) > 0 {

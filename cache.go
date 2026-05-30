@@ -112,7 +112,7 @@ func createFieldFromStructField(sf reflect.StructField, f *field, t, ft reflect.
 }
 
 // processStructField processes a single struct field and updates fields/next accordingly
-func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int, count, nextCount map[reflect.Type]int, fields, next *[]field) {
+func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int, _, nextCount map[reflect.Type]int, fields, next *[]field) {
 	if shouldSkipField(sf) {
 		return
 	}
@@ -138,19 +138,15 @@ func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int,
 
 	name := getFieldName(sf, f)
 
-	// Record found field and index sequence.
+	// Record found field and index sequence. (encoding/json adds a duplicate
+	// here when count[f.typ] > 1 so a later "annihilation" pass can drop
+	// ambiguous embedded fields — but this package has no such pass, and the
+	// original port also incremented count per field, so every field after the
+	// first was silently duplicated. That produced duplicate errors and made
+	// nested validation O(2^depth). Each field is now recorded exactly once.
 	if name != sf.Name || !sf.Anonymous || ft.Kind() != reflect.Struct {
-		count[f.typ]++
 		newField := createFieldFromStructField(sf, f, t, ft, index, validTag)
 		*fields = append(*fields, newField)
-
-		if count[f.typ] > 1 {
-			// If there were multiple instances, add a second,
-			// so that the annihilation code will see a duplicate.
-			// It only cares about the distinction between 1 or 2,
-			// so don't bother generating any more copies.
-			*fields = append(*fields, (*fields)[len(*fields)-1])
-		}
 		return
 	}
 
