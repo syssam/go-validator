@@ -80,7 +80,7 @@ func TestDerefChains(t *testing.T) {
 	// nil pointer: deref must stop and return the (nil) pointer value, not panic.
 	var np *string
 	gotNil := deref(reflect.ValueOf(np))
-	if gotNil.Kind() != reflect.Ptr || !gotNil.IsNil() {
+	if gotNil.Kind() != reflect.Pointer || !gotNil.IsNil() {
 		t.Errorf("deref(nil *string) should return the nil pointer value, got %s", gotNil.Kind())
 	}
 

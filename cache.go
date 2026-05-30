@@ -60,7 +60,7 @@ func shouldSkipField(sf reflect.StructField) bool {
 	isUnexported := sf.PkgPath != ""
 	if sf.Anonymous {
 		t := sf.Type
-		if t.Kind() == reflect.Ptr {
+		if t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		if isUnexported && t.Kind() != reflect.Struct {
@@ -127,7 +127,7 @@ func processStructField(sf reflect.StructField, f *field, t reflect.Type, i int,
 	index[len(f.index)] = i
 
 	ft := sf.Type
-	if ft.Name() == "" && ft.Kind() == reflect.Ptr {
+	if ft.Name() == "" && ft.Kind() == reflect.Pointer {
 		// Follow pointer (so an embedded *Struct is treated as the struct).
 		ft = ft.Elem()
 	}
@@ -285,7 +285,7 @@ func (f *field) parseMessageName(rule string, ft reflect.Type) string {
 			return messageName + ".string"
 		case reflect.Array, reflect.Slice, reflect.Map:
 			return messageName + ".array"
-		case reflect.Struct, reflect.Ptr:
+		case reflect.Struct, reflect.Pointer:
 			return messageName
 		default:
 			return messageName

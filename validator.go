@@ -105,7 +105,7 @@ func buildFieldName(namespace, fieldName []byte) string {
 // deref dereferences interface and pointer values to their underlying value.
 // This consolidates the repeated pattern found 30+ times in the codebase.
 func deref(v reflect.Value) reflect.Value {
-	for v.Kind() == reflect.Interface || v.Kind() == reflect.Ptr {
+	for v.Kind() == reflect.Interface || v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return v
 		}
@@ -487,7 +487,7 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 		sort.Sort(sv)
 		for _, k := range sv {
 			mapValue := field.MapIndex(k)
-			if mapValue.Kind() == reflect.Interface || mapValue.Kind() == reflect.Ptr {
+			if mapValue.Kind() == reflect.Interface || mapValue.Kind() == reflect.Pointer {
 				mapValue = mapValue.Elem()
 			}
 			if mapValue.Kind() != reflect.Struct {
@@ -499,7 +499,7 @@ func extractValuesFromCollection(field reflect.Value) ([]string, error) {
 	case reflect.Slice, reflect.Array:
 		for i := 0; i < field.Len(); i++ {
 			sliceValue := field.Index(i)
-			if sliceValue.Kind() == reflect.Interface || sliceValue.Kind() == reflect.Ptr {
+			if sliceValue.Kind() == reflect.Interface || sliceValue.Kind() == reflect.Pointer {
 				sliceValue = sliceValue.Elem()
 			}
 			if sliceValue.Kind() != reflect.Struct {
@@ -563,7 +563,7 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 			item = item.Elem()
 		}
 
-		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
+		if item.Kind() == reflect.Struct || item.Kind() == reflect.Pointer {
 			key := []byte(k.String())
 			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), key)
 			newstructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), key)
@@ -585,7 +585,7 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 			item = item.Elem()
 		}
 
-		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
+		if item.Kind() == reflect.Struct || item.Kind() == reflect.Pointer {
 			index := []byte(strconv.Itoa(i))
 			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), index)
 			newStructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), index)
@@ -1075,7 +1075,7 @@ func isContains(v reflect.Value, params []string) (bool, error) {
 			found := false
 			for i := 0; i < v.Len(); i++ {
 				elem := v.Index(i)
-				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Ptr {
+				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Pointer {
 					elem = elem.Elem()
 				}
 				if ToString(elem.Interface()) == param {
@@ -1118,7 +1118,7 @@ func isDoesntContain(v reflect.Value, params []string) (bool, error) {
 		for _, param := range params {
 			for i := 0; i < v.Len(); i++ {
 				elem := v.Index(i)
-				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Ptr {
+				if elem.Kind() == reflect.Interface || elem.Kind() == reflect.Pointer {
 					elem = elem.Elem()
 				}
 				if ToString(elem.Interface()) == param {
@@ -1204,7 +1204,7 @@ func (v *Validator) validateStruct(s any, jsonNamespace, structNamespace []byte,
 	var err error
 
 	val := reflect.ValueOf(s)
-	if val.Kind() == reflect.Interface || val.Kind() == reflect.Ptr {
+	if val.Kind() == reflect.Interface || val.Kind() == reflect.Pointer {
 		val = val.Elem()
 	}
 	// we only accept structs
@@ -1282,7 +1282,7 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 	}
 
 	// Handle pointer and interface dereferencing
-	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
+	if value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
 		if err := v.checkRequired(value, f, o, name, structName); err != nil {
 			return err
 		}
@@ -1387,7 +1387,7 @@ func Empty(v reflect.Value) bool {
 		return v.Uint() == 0
 	case reflect.Float32, reflect.Float64:
 		return v.Float() == 0
-	case reflect.Interface, reflect.Ptr:
+	case reflect.Interface, reflect.Pointer:
 		return v.IsNil()
 	case reflect.Chan, reflect.Func:
 		return v.IsNil()
@@ -1475,7 +1475,7 @@ func IsProhibited(i any) bool {
 
 // isAcceptedIf checks if the field is accepted when another field equals a specific value
 func isAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1492,7 +1492,7 @@ func isAcceptedIf(v, anotherField reflect.Value, params []string) (bool, error) 
 
 // isDeclinedIf checks if the field is declined when another field equals a specific value
 func isDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1509,7 +1509,7 @@ func isDeclinedIf(v, anotherField reflect.Value, params []string) (bool, error) 
 
 // isProhibitedIf checks if the field is empty when another field equals a specific value
 func isProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1526,7 +1526,7 @@ func isProhibitedIf(v, anotherField reflect.Value, params []string) (bool, error
 
 // isProhibitedUnless checks if the field is empty unless another field equals a specific value
 func isProhibitedUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1554,7 +1554,7 @@ func IsMissing(i any) bool {
 
 // isMissingIf checks if the field is missing when another field equals a specific value
 func isMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1571,7 +1571,7 @@ func isMissingIf(v, anotherField reflect.Value, params []string) (bool, error) {
 
 // isMissingUnless checks if the field is missing unless another field equals a specific value
 func isMissingUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1684,7 +1684,7 @@ func IsPresent(i any) bool {
 
 // isPresentIf checks if the field is present (non-empty) when another field equals a specific value
 func isPresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -1701,7 +1701,7 @@ func isPresentIf(v, anotherField reflect.Value, params []string) (bool, error) {
 
 // isPresentUnless checks if the field is present (non-empty) unless another field equals a specific value
 func isPresentUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2065,7 +2065,7 @@ func IsNotIn(i any, params []string) (bool, error) {
 // isDifferent checks if the value is different from another field
 func isDifferent(v, anotherField reflect.Value) (bool, error) {
 	v = deref(v)
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2085,7 +2085,7 @@ func IsDifferent(a, b any) (bool, error) {
 // This is handled specially in the validation loop since it needs to find {field}_confirmation
 func isConfirmed(v, confirmationField reflect.Value) (bool, error) {
 	v = deref(v)
-	if confirmationField.Kind() == reflect.Interface || confirmationField.Kind() == reflect.Ptr {
+	if confirmationField.Kind() == reflect.Interface || confirmationField.Kind() == reflect.Pointer {
 		confirmationField = confirmationField.Elem()
 	}
 
@@ -2263,7 +2263,7 @@ func IsFilled(i any) (bool, error) {
 
 // isRequiredIf check value required when anotherField str is a member of the set of strings params
 func isRequiredIf(v, anotherField reflect.Value, params []string) (valid bool, matchedValue string, err error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2296,7 +2296,7 @@ func isRequiredIf(v, anotherField reflect.Value, params []string) (valid bool, m
 
 // isRequiredUnless check value required when anotherField str is a member of the set of strings params
 func isRequiredUnless(v, anotherField reflect.Value, params []string) (bool, error) {
-	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Ptr {
+	if anotherField.Kind() == reflect.Interface || anotherField.Kind() == reflect.Pointer {
 		anotherField = anotherField.Elem()
 	}
 
@@ -2587,7 +2587,7 @@ func findField(fieldName string, v reflect.Value) (reflect.Value, error) {
 	i := 1
 	if len(fields) > i {
 		for {
-			if current.Kind() == reflect.Interface || current.Kind() == reflect.Ptr {
+			if current.Kind() == reflect.Interface || current.Kind() == reflect.Pointer {
 				current = current.Elem()
 			}
 
