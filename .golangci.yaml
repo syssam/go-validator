@@ -1,0 +1,103 @@
+version: "2"
+run:
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+linters:
+  default: none
+  enable:
+    - errcheck
+    - gocyclo
+    - govet
+    - misspell
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - fmt.Print
+        - fmt.Println
+    gocritic:
+      disabled-checks:
+        - rangeValCopy
+        - builtinShadow
+        - regexpSimplify
+        - wrapperFunc
+        - dynamicFmtString
+        - hugeParam
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    gocyclo:
+      min-complexity: 50
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+        - name: cognitive-complexity
+          arguments:
+            - 50
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - cyclop
+          - funlen
+          - gocritic
+          - gocyclo
+          - gosec
+          - revive
+        path: _test\.go
+      - linters:
+          - gocyclo
+        text: cyclomatic complexity.*of func.*is high
+      - linters:
+          - unused
+        text: is unused
+      - path: (.+)\.go$
+        text: Error return value is not checked.*_test\.go
+      - path: (.+)\.go$
+        text: should use.*ReplaceAll
+      - path: (.+)\.go$
+        text: integer overflow conversion
+      - path: (.+)\.go$
+        text: ineffectual assignment to err
+      - path: (.+)\.go$
+        text: possible nil pointer dereference
+      - path: (.+)\.go$
+        text: this check suggests that the pointer can be nil
+      - path: (.+)\.go$
+        text: paramTypeCombine.*could be replaced
+    paths:
+      - vendor
+      - _examples
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - vendor
+      - _examples
+      - third_party$
+      - builtin$
+      - examples$

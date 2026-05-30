@@ -130,7 +130,10 @@ type FieldError struct {
 	DefaultAttribute  string            `json:"default_attribute,omitempty"`
 	Value             string            `json:"value,omitempty"`
 	Message           string            `json:"message"`
-	FuncError         error             `json:"func_error,omitempty"`
+	// FuncError holds an internal error (e.g. a failed conversion) for error-chain
+	// support via Unwrap. It is excluded from JSON since error has no useful
+	// JSON representation; use Message for client-facing output.
+	FuncError error `json:"-"`
 }
 
 // Unwrap implements the errors.Unwrap interface for error chain support

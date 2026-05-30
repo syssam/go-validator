@@ -85,8 +85,19 @@ func RegisterAutoUnwrap(matcher TypeMatchFunc, boolMethod, valueMethod string) {
 		valueMethod: valueMethod,
 	})
 	autoUnwrapMatchersMu.Unlock()
-	// Clear cache since new matcher may match previously cached types
-	autoUnwrapCache = sync.Map{}
+	// Clear cache since new matcher may match previously cached types.
+	// Clear in place (Range+Delete) rather than reassigning the sync.Map value,
+	// which would race with concurrent Load calls in resolveCustomTypeFunc.
+	clearSyncMap(&autoUnwrapCache)
+}
+
+// clearSyncMap removes all entries from a sync.Map in place. Safe to call
+// concurrently with other Load/Store/Delete operations on the same map.
+func clearSyncMap(m *sync.Map) {
+	m.Range(func(key, _ any) bool {
+		m.Delete(key)
+		return true
+	})
 }
 
 // ResetCustomTypeFuncs removes all registered custom type functions and auto-unwrap matchers.
