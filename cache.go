@@ -258,21 +258,6 @@ func (f *field) isvalidTag(s string) bool {
 	return true
 }
 
-//nolint:unused // Kept for potential future use
-func (f *field) isValidAttribute(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, c := range s {
-		if strings.ContainsRune("\\'\"!#$%&()*+-./:<=>?@[]^_{|}~ ", c) {
-			// Backslash and quote chars are reserved, but
-			// otherwise anything goes.
-			return false
-		}
-	}
-	return true
-}
-
 func (f *field) parseMessageName(rule string, ft reflect.Type) string {
 	messageName := rule
 

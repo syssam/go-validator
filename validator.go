@@ -68,6 +68,17 @@ func putBuffer(buf *[]byte) {
 	byteBufferPool.Put(buf)
 }
 
+// appendNamespace returns a fresh namespace of the form base + part + ".".
+// It always allocates a new backing array so sibling fields can never corrupt
+// each other's paths through append-aliasing of a shared base slice.
+func appendNamespace(base, part []byte) []byte {
+	out := make([]byte, 0, len(base)+len(part)+1)
+	out = append(out, base...)
+	out = append(out, part...)
+	out = append(out, '.')
+	return out
+}
+
 // buildFieldName efficiently builds a field name string
 func buildFieldName(namespace, fieldName []byte) string {
 	if len(namespace) == 0 {
@@ -95,13 +106,6 @@ func deref(v reflect.Value) reflect.Value {
 		v = v.Elem()
 	}
 	return v
-}
-
-// isValidAndNonEmpty checks if a value is valid and non-empty.
-// Returns true if validation should be skipped (value is empty/invalid).
-func isValidAndNonEmpty(v reflect.Value) bool {
-	v = deref(v)
-	return v.IsValid() && !Empty(v)
 }
 
 // comparisonOp represents a comparison operator
@@ -237,6 +241,11 @@ type Validator struct {
 	Attributes    map[string]string
 	CustomMessage map[string]string
 	Translator    *Translator
+	// FailFast stops validation at the first field that fails and returns
+	// immediately, instead of collecting every error. The default (false)
+	// preserves the collect-all behavior. Set it once at setup, before
+	// concurrent ValidateStruct calls.
+	FailFast bool
 }
 
 // Default returns a instance of Validator
@@ -404,6 +413,39 @@ func (v *Validator) validateWithStringParamRulesMap(tag *ValidTag, value reflect
 	return nil
 }
 
+// isFieldComparisonRule reports whether a rule name is a comparison rule that may
+// have already been satisfied by dependent field comparison (gt/gte/lt/lte).
+func isFieldComparisonRule(name string) bool {
+	return name == "gt" || name == "gte" || name == "lt" || name == "lte"
+}
+
+// applyRuleMaps runs RuleMap then ParamRuleMap for a single tag. ParamRuleMap is
+// skipped for comparison rules already handled by dependent field comparison.
+func (v *Validator) applyRuleMaps(tag *ValidTag, value reflect.Value, f *field, name, structName string, o reflect.Value, handled bool) error {
+	if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
+		return err
+	}
+	if handled && isFieldComparisonRule(tag.name) {
+		return nil
+	}
+	return v.validateWithParamRuleMap(tag, value, f, name, structName, o)
+}
+
+// validateCollectionRules applies dependent rules and RuleMap/ParamRuleMap to a
+// map or slice value (without string-specific rules).
+func (v *Validator) validateCollectionRules(f *field, value reflect.Value, name, structName string, o reflect.Value) error {
+	for _, tag := range f.validTags {
+		handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
+		if err != nil {
+			return err
+		}
+		if err := v.applyRuleMaps(tag, value, f, name, structName, o, handled); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // isCommonRules applies common validation rules (RuleMap, ParamRuleMap, dependent rules)
 func (v *Validator) validateCommonRules(tags otherValidTags, value reflect.Value, f *field, name, structName string, o reflect.Value) error {
 	for _, tag := range tags {
@@ -412,17 +454,8 @@ func (v *Validator) validateCommonRules(tags otherValidTags, value reflect.Value
 			return err
 		}
 
-		// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-		skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-		if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
+		if err := v.applyRuleMaps(tag, value, f, name, structName, o, handled); err != nil {
 			return err
-		}
-
-		if !skipParamRule {
-			if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
 		}
 
 		if value.Kind() == reflect.String {
@@ -526,10 +559,9 @@ func (v *Validator) validateMapFields(value reflect.Value, f *field, jsonNamespa
 		}
 
 		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
-			newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-			newJSONNamespace = append(append(newJSONNamespace, []byte(k.String())...), '.')
-			newstructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
-			newstructNamespace = append(append(newstructNamespace, []byte(k.String())...), '.')
+			key := []byte(k.String())
+			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), key)
+			newstructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), key)
 			err = v.ValidateStruct(item.Interface(), newJSONNamespace, newstructNamespace)
 			if err != nil {
 				return err
@@ -549,10 +581,9 @@ func (v *Validator) validateSliceFields(value reflect.Value, f *field, jsonNames
 		}
 
 		if item.Kind() == reflect.Struct || item.Kind() == reflect.Ptr {
-			newJSONNamespace := append(append(jsonNamespace, f.nameBytes...), '.')
-			newJSONNamespace = append(append(newJSONNamespace, []byte(strconv.Itoa(i))...), '.')
-			newStructNamespace := append(append(structNamespace, f.structNameBytes...), '.')
-			newStructNamespace = append(append(newStructNamespace, []byte(strconv.Itoa(i))...), '.')
+			index := []byte(strconv.Itoa(i))
+			newJSONNamespace := appendNamespace(appendNamespace(jsonNamespace, f.nameBytes), index)
+			newStructNamespace := appendNamespace(appendNamespace(structNamespace, f.structNameBytes), index)
 			err = v.ValidateStruct(value.Index(i).Interface(), newJSONNamespace, newStructNamespace)
 			if err != nil {
 				return err
@@ -1178,6 +1209,9 @@ func (v *Validator) ValidateStruct(s interface{}, jsonNamespace, structNamespace
 			} else {
 				errs = append(errs, err)
 			}
+			if v.FailFast {
+				break
+			}
 		}
 	}
 
@@ -1248,46 +1282,14 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 		return nil
 	case reflect.Map:
 		// Validate map-specific rules (without string-specific rules)
-		for _, tag := range f.validTags {
-			handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
-			if err != nil {
-				return err
-			}
-
-			// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-			skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-			if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
-
-			if !skipParamRule {
-				if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-					return err
-				}
-			}
+		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
+			return err
 		}
 		return v.validateMapFields(value, f, jsonNamespace, structNamespace)
 	case reflect.Slice, reflect.Array:
 		// Validate slice/array-specific rules (without string-specific rules)
-		for _, tag := range f.validTags {
-			handled, err := v.checkDependentRulesWithStatus(tag, f, value, o, name, structName)
-			if err != nil {
-				return err
-			}
-
-			// Skip ParamRuleMap for comparison rules if they were handled by field comparison
-			skipParamRule := handled && (tag.name == "gt" || tag.name == "gte" || tag.name == "lt" || tag.name == "lte")
-
-			if err := v.validateWithRuleMap(tag, value, f, name, structName, o); err != nil {
-				return err
-			}
-
-			if !skipParamRule {
-				if err := v.validateWithParamRuleMap(tag, value, f, name, structName, o); err != nil {
-					return err
-				}
-			}
+		if err := v.validateCollectionRules(f, value, name, structName, o); err != nil {
+			return err
 		}
 		return v.validateSliceFields(value, f, jsonNamespace, structNamespace)
 	case reflect.Struct:
@@ -1306,8 +1308,8 @@ func (v *Validator) newTypeValidator(value reflect.Value, f *field, o reflect.Va
 			return nil
 		}
 		// Regular struct - recursively validate
-		jsonNamespace = append(append(jsonNamespace, f.nameBytes...), '.')
-		structNamespace = append(append(structNamespace, f.structNameBytes...), '.')
+		jsonNamespace = appendNamespace(jsonNamespace, f.nameBytes)
+		structNamespace = appendNamespace(structNamespace, f.structNameBytes)
 		return v.ValidateStruct(value.Interface(), jsonNamespace, structNamespace)
 	default:
 		// For unsupported types with validation tags, return a FieldError with FuncError
@@ -2478,7 +2480,7 @@ func parseValidatorMessageParameters(validTag *ValidTag, o reflect.Value) Messag
 			},
 		)
 	case "requiredIf", "requiredUnless", "same":
-		other := getDisplayableAttribute(o, validTag.params[0])
+		other := getDisplayableAttribute(validTag.params[0])
 		messageParameters = append(
 			messageParameters,
 			messageParameter{
@@ -2519,14 +2521,14 @@ func (v *Validator) formatsMessages(fieldError *FieldError) *FieldError {
 }
 
 func replaceAttributes(message, attribute string, messageParameters MessageParameters) string {
-	message = strings.Replace(message, "{{.Attribute}}", attribute, -1)
+	message = strings.ReplaceAll(message, "{{.Attribute}}", attribute)
 	for _, parameter := range messageParameters {
-		message = strings.Replace(message, "{{."+parameter.Key+"}}", parameter.Value, -1)
+		message = strings.ReplaceAll(message, "{{."+parameter.Key+"}}", parameter.Value)
 	}
 	return message
 }
 
-func getDisplayableAttribute(o reflect.Value, attribute string) string {
+func getDisplayableAttribute(attribute string) string {
 	attributes := strings.Split(attribute, ".")
 	return attributes[len(attributes)-1]
 }
@@ -2713,11 +2715,6 @@ func (v *Validator) checkDependentRulesWithStatus(validTag *ValidTag, f *field, 
 	}
 
 	return handled, nil
-}
-
-func (v *Validator) checkDependentRules(validTag *ValidTag, f *field, value, o reflect.Value, name, structName string) error {
-	_, err := v.checkDependentRulesWithStatus(validTag, f, value, o, name, structName)
-	return err
 }
 
 // =============================================================================

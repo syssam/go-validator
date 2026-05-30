@@ -1,6 +1,11 @@
 package validator
 
-// MessageMap is a map of string, that can be used as error message for ValidateStruct function.
+// MessageMap holds the default error-message template for each rule.
+//
+// Thread-safety: this is a plain map with no internal locking. Mutate it only
+// during init/startup, before any concurrent ValidateStruct calls. Reads happen
+// on the validation hot path, so a write concurrent with validation is a data
+// race. For runtime-configurable, per-language messages use a *Translator.
 var MessageMap = map[string]string{
 	"accepted":             "The {{.Attribute}} must be accepted.",
 	"acceptedIf":           "The {{.Attribute}} must be accepted when {{.Other}} is {{.Value}}.",
