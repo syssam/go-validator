@@ -88,6 +88,10 @@ type ErrorResponse struct {
 	Parameter string `json:"parameter"`
 }
 
+// maxPooledResponseCap bounds the slice capacity returned to errorResponsePool,
+// so a one-off huge error set cannot pin an oversized backing array forever.
+const maxPooledResponseCap = 64
+
 var errorResponsePool = sync.Pool{
 	New: func() any {
 		slice := make([]ErrorResponse, 0, 10)
@@ -104,8 +108,6 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 	responsesPtr := errorResponsePool.Get().(*[]ErrorResponse)
 	responses := (*responsesPtr)[:0]
 
-	defer errorResponsePool.Put(responsesPtr)
-
 	for _, e := range es {
 		if fieldErr, ok := e.(*FieldError); ok {
 			responses = append(responses, ErrorResponse{
@@ -115,8 +117,16 @@ func (es Errors) MarshalJSON() ([]byte, error) {
 		}
 	}
 
-	*responsesPtr = responses
-	return json.Marshal(responses)
+	out, err := json.Marshal(responses)
+
+	// Only return buffers that haven't grown too large, mirroring the
+	// byteBufferPool guard, to avoid pinning oversized backing arrays.
+	if cap(responses) <= maxPooledResponseCap {
+		*responsesPtr = responses
+		errorResponsePool.Put(responsesPtr)
+	}
+
+	return out, err
 }
 
 // FieldError encapsulates name, message, and value etc.
